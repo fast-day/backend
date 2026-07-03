@@ -147,6 +147,74 @@ export class OrdersService {
     return buildPaginatedResponse(data, total, page, limit);
   }
 
+  async getCustomerOrders (companyId: string, customerId: string) {
+    const customer = await this.prismaService.customerCompany.findUnique({
+      where: {
+        companyId,
+        id: customerId,
+      },
+      select: { customerId: true },
+    });
+
+    if (!customer)
+      throw new HttpException(
+        {
+          status: HttpStatus.NOT_FOUND,
+          title: "Клиент не найден",
+          detail: "Не удалось найти клиента",
+        },
+        HttpStatus.NOT_FOUND,
+      );
+
+    const orders = await this.prismaService.order.findMany({
+      where: {
+        companyId,
+        // customerId: customer.customerId
+      },
+      select: {
+        id: true,
+        status: true,
+        subtotal: true,
+        total: true,
+        tag: true,
+        paymentMethod: true,
+        paidAt: true,
+        comment: true,
+        discount: true,
+        bookings: {
+          select: {
+            id: true,
+            status: true,
+            tag: true,
+            date: true,
+            startTime: true,
+            endTime: true,
+          }
+        }
+      }
+    });
+
+    return orders.map((order) => ({
+      id: order.id,
+      status: order.status,
+      subtotal: order.subtotal,
+      total: order.total,
+      discount: order.discount,
+      tag: order.tag,
+      payment_method: order.paymentMethod,
+      comment: order.comment,
+      is_payment: !!order.paidAt,
+      bookings: order.bookings.map((booking) => ({
+        id: booking.id,
+        status: booking.status,
+        tag: booking.tag,
+        date: booking.date,
+        start_time: booking.startTime,
+        end_time: booking.endTime
+      }))
+    }));
+  }
+
   async details(orderId: string) {
     const order = await this.prismaService.order.findFirst({
       where: { id: orderId },

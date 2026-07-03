@@ -50,6 +50,8 @@ const permissions = [
   "booking:create",
   "bookings:read",
   "booking-detail:read",
+  "booking-customer-detail:read",
+  "order-customer-detail:read",
   "booking:update",
   "booking:status",
   "booking:delete",

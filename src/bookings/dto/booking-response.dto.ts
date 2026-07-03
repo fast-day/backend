@@ -1,7 +1,7 @@
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 import { BookingStatus, PaymentType } from "@prisma/client";
 
-class LocationInfoDto {
+export class LocationInfoDto {
   @ApiProperty({ example: "a8f4ff39-f908-472e-bf19-259b557c952a" })
   id!: string;
 
@@ -15,7 +15,7 @@ class LocationInfoDto {
   address?: AddressDto | null;
 }
 
-class AddressDto {
+export class AddressDto {
   @ApiProperty({ example: "ул. Льва Толстого, д. 16" })
   street!: string;
 
@@ -29,7 +29,7 @@ class AddressDto {
   country!: string;
 }
 
-class EmployeeInfoDto {
+export class EmployeeInfoDto {
   @ApiProperty({ example: "89e1ff87-f273-47a4-ab34-a90c716c59f0" })
   id!: string;
 
@@ -49,7 +49,7 @@ class EmployeeInfoDto {
   avatar?: string | null;
 }
 
-class CustomerInfoDto {
+export class CustomerInfoDto {
   @ApiProperty({ example: "d91e3d55-6ba2-4c26-bd7a-55a7ce35e13b" })
   id!: string;
 
@@ -72,7 +72,7 @@ class CustomerInfoDto {
   name?: string;
 }
 
-class ServicePriceDto {
+export class ServicePriceDto {
   @ApiProperty({ example: 8000 })
   price!: number;
 
@@ -80,7 +80,7 @@ class ServicePriceDto {
   cost_price?: number;
 }
 
-class ServiceInfoDto {
+export class ServiceInfoDto {
   @ApiProperty({ example: "5d48c70b-c018-4e93-8673-b6be4f4fad93" })
   id!: string;
 
@@ -106,7 +106,7 @@ class ServiceInfoDto {
   category?: string | null;
 }
 
-class OrderInfoDto {
+export class OrderInfoDto {
   @ApiProperty({ example: "e4e79991-5c83-410c-a2f0-be9a888dd2d9" })
   id!: string;
 
