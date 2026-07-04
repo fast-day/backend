@@ -45,6 +45,7 @@ import {
 import { UnAuthorizedDto } from "src/shared/dto/errors.dto";
 import { GetBookingsDto } from "./dto/get-bookings.dto";
 import { BookingCreateOrderDto } from "./dto/booking-create-order.dto";
+import { BookingCustomerResponseDto } from "./dto/booking-customer-response.dto";
 
 @ApiTags("Бронирование")
 @Controller()
@@ -147,6 +148,39 @@ export class BookingsController {
   @HttpCode(HttpStatus.OK)
   details(@Param("booking_id") bookingId: string) {
     return this.bookingsService.details(bookingId);
+  }
+
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: "Получение информации о бронировании клиента",
+    description: "Возвращает полную информацию о бронированиях клиента",
+  })
+  @ApiParam({
+    name: "customer_id",
+    example: "a81b90e4-5a76-4870-84be-c9732b9b22c1",
+    description: "ID клиента",
+  })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: "Информация о бронированиях клиента",
+    type: BookingCustomerResponseDto,
+  })
+  @ApiResponse({
+    status: HttpStatus.UNAUTHORIZED,
+    description: "unauthorized",
+    type: UnAuthorizedDto,
+  })
+  @ApiResponse({
+    status: HttpStatus.NOT_FOUND,
+    description: "not found",
+  })
+  @Get("booking/customer/:customer_id")
+  @UseGuards(AuthGuard, LoadUserGuard, CompanyGuard, ScopeGuard)
+  @Scopes("booking-customer-detail:read")
+  @HttpCode(HttpStatus.OK)
+  getCustomerBookings(@Req() req, @Param("customer_id") customerId: string) {
+    const companyId = req.user.companyId;
+    return this.bookingsService.getCustomerBookings(companyId, customerId);
   }
 
   @ApiBearerAuth()

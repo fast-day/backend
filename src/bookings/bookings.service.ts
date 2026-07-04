@@ -139,8 +139,6 @@ export class BookingsService {
         HttpStatus.NOT_FOUND,
       );
 
-    console.log("customer", companyId);
-
     const isCustomerCompany =
       await this.prismaService.customerCompany.findFirst({
         where: { customerId: customer.id, companyId },
@@ -875,6 +873,144 @@ export class BookingsService {
     };
 
     return res;
+  }
+
+  async getCustomerBookings(companyId: string, customerId: string) {
+    const customer = await this.prismaService.customerCompany.findUnique({
+      where: {
+        companyId,
+        id: customerId,
+      },
+      select: { customerId: true },
+    });
+
+    if (!customer)
+      throw new HttpException(
+        {
+          status: HttpStatus.NOT_FOUND,
+          title: "Клиент не найден",
+          detail: "Не удалось найти клиента",
+        },
+        HttpStatus.NOT_FOUND,
+      );
+
+    const bookings = await this.prismaService.booking.findMany({
+      where: {
+        companyId,
+        customerId: customer.customerId,
+      },
+      select: {
+        id: true,
+        tag: true,
+        status: true,
+        startTime: true,
+        endTime: true,
+        date: true,
+        comment: true,
+        location: {
+          select: {
+            id: true,
+            name: true,
+            avatar: true,
+            address: {
+              select: {
+                street: true,
+                city: true,
+                house: true,
+                country: true,
+              },
+            },
+          },
+        },
+        employee: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            phone: true,
+            email: true,
+            avatar: true,
+          },
+        },
+        service: {
+          select: {
+            id: true,
+            name: true,
+            duration: true,
+            avatar: true,
+            price: { select: { price: true, costPrice: true } },
+            publicName: true,
+            mark: true,
+            category: true,
+            type: true,
+          },
+        },
+        order: {
+          select: {
+            id: true,
+            status: true,
+            tag: true,
+            subtotal: true,
+            total: true,
+            discount: true,
+            paymentMethod: true,
+            paidAt: true,
+          },
+        },
+      },
+    });
+
+    return bookings.map((booking) => ({
+      id: booking.id,
+      status: booking.status,
+      tag: booking.tag,
+      start_time: booking.startTime,
+      end_time: booking.endTime,
+      date: booking.date,
+      comment: booking.comment,
+      location: {
+        id: booking.location.id,
+        name: booking.location.name,
+        avatar: buildFileUrl(booking.location.avatar),
+        address: booking.location.address,
+      },
+      employee: {
+        id: booking.employee.id,
+        first_name: booking.employee.firstName,
+        last_name: booking.employee.lastName,
+        full_name: getFullName(
+          booking.employee.firstName,
+          booking.employee.lastName,
+        ),
+        phone: booking.employee.phone,
+        email: booking.employee.email,
+        avatar: buildFileUrl(booking.employee.avatar),
+      },
+      service: {
+        id: booking.service.id,
+        name: booking.service.name,
+        duration: booking.service.duration,
+        public_name: booking.service.publicName,
+        type: booking.service.type,
+        category: booking.service.category,
+        avatar: buildFileUrl(booking.service.avatar),
+        mark: booking.service.mark,
+        prices: {
+          price: booking.service.price?.price,
+          cost_price: booking.service.price?.costPrice,
+        },
+      },
+      order: {
+        id: booking.order?.id,
+        status: booking.order?.status,
+        tag: booking.order?.tag,
+        subtotal: booking.order?.subtotal,
+        total: booking.order?.total,
+        discount: booking.order?.discount,
+        payment_method: booking.order?.paymentMethod,
+        paid_at: booking.order?.paidAt,
+      },
+    }));
   }
 
   async getMeBookings(customerId: string) {
