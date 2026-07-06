@@ -258,6 +258,7 @@ export class OrdersService {
                     costPrice: true,
                   },
                 },
+                duration: true,
                 mark: true,
                 type: true,
                 avatar: true,
@@ -329,6 +330,7 @@ export class OrdersService {
           category: book.service.category,
           mark: book.service.mark,
           type: book.service.type,
+          duration: book.service.duration,
           price: {
             price: book.service.price?.price,
             cost_price: book.service.price?.costPrice,
