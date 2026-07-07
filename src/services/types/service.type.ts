@@ -48,11 +48,13 @@ export interface IServices {
   id: string;
   name: string;
   duration: number;
+  category: string | null;
   public_name: string | null;
+  avatar: string | null;
   price: number | null;
-  prices: ServicePrices;
   mark: MarkEnum;
   type: ServiceType;
+  prices: ServicePrices;
   // date: ServiceDate;
   // discount: ServiceDiscount | null;
   users_length: number;

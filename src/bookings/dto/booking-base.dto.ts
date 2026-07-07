@@ -1,13 +1,55 @@
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 import { PaymentType } from "@prisma/client";
+import { Type } from "class-transformer";
 import {
+  IsArray,
   IsDateString,
   IsEnum,
+  IsNumber,
   IsOptional,
   IsString,
   IsUUID,
   Matches,
+  ValidateNested,
 } from "class-validator";
+
+export class BookingDtoService {
+  @ApiProperty({
+    example: "82e930d8-c4b3-4d38-b166-f1d872189930",
+    description: "Service ID",
+    required: true,
+  })
+  @IsString()
+  service_id!: string;
+
+  @ApiProperty({
+    example: 999,
+    description: "Цена",
+    required: true,
+  })
+  @IsNumber()
+  price!: number;
+
+  @ApiProperty({
+    example: 2,
+    description: "Количество услуг",
+    required: false,
+    default: 1,
+  })
+  @IsNumber()
+  @IsOptional()
+  count?: number;
+
+  @ApiProperty({
+    example: 90,
+    description: "Длительность",
+    required: false,
+    default: null,
+  })
+  @IsNumber()
+  @IsOptional()
+  duration?: number;
+}
 
 export class BookingBaseDto {
   // @ApiProperty({
@@ -60,13 +102,30 @@ export class BookingBaseDto {
   @IsOptional()
   comment?: string;
 
+  // @ApiProperty({
+  //   example: "5d48c70b-c018-4e93-8673-b6be4f4fad93",
+  //   description: "ID услуги",
+  //   required: true,
+  // })
+  // @IsUUID()
+  // service_id!: string;
+
   @ApiProperty({
-    example: "5d48c70b-c018-4e93-8673-b6be4f4fad93",
-    description: "ID услуги",
-    required: true,
+    type: [BookingDtoService],
+    example: [
+      {
+        service_id: "82e930d8-c4b3-4d38-b166-f1d872189930",
+        price: 999,
+        count: 2,
+        duration: 90,
+      },
+    ],
+    description: "Список выбранных услуг",
   })
-  @IsUUID()
-  service_id!: string;
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => BookingDtoService)
+  services!: BookingDtoService[];
 
   @ApiProperty({
     example: "89e1ff87-f273-47a4-ab34-a90c716c59f0",
