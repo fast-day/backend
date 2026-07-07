@@ -1,7 +1,7 @@
 import { HttpException, HttpStatus, Injectable } from "@nestjs/common";
 import { PrismaService } from "src/prisma/prisma.service";
 import { BookingCreateDto } from "./dto/booking-create.dto";
-import { IBookingDetails } from "./type/bookings.type";
+// import { IBookingDetails } from "./type/bookings.type";
 import { BookingStatusDto } from "./dto/booking-status.dto";
 import { BookingUpdateDto } from "./dto/booking-update.dto";
 import { BookingCreateCustomerDto } from "./dto/booking-create-customer.dto";
@@ -19,6 +19,7 @@ import { BookingCreateOrderDto } from "./dto/booking-create-order.dto";
 import { MailService } from "src/mail/mail.service";
 import { generateOrderTag } from "src/orders/utils/generate-order-tag";
 import { getFullName } from "src/shared/utils/get-full-name.util";
+import { BookingDtoService } from "./dto/booking-base.dto";
 
 @Injectable()
 export class BookingsService {
@@ -30,19 +31,24 @@ export class BookingsService {
 
   private async validateLocation(
     locationId: string,
-    serviceId: string,
+    service: BookingDtoService[],
   ): Promise<boolean> {
-    const location = await this.prismaService.locationService.findFirst({
-      where: { locationId, serviceId },
+    const serviceIds = service.map((service) => service.service_id);
+
+    const location = await this.prismaService.locationService.findMany({
+      where: { locationId, serviceId: { in: serviceIds } },
     });
 
-    if (!location)
+    const foundIds = new Set(location.map((ls) => ls.serviceId));
+    const missing = serviceIds.filter((id) => !foundIds.has(id));
+
+    if (missing.length > 0)
       throw new HttpException(
         {
           status: HttpStatus.BAD_REQUEST,
           title: "Ошибка локации",
-          detail: "Данная услуга не доступна в выбранном месте",
-          meta: { location_id: locationId },
+          detail: "Часть услуг не доступна в выбранном месте",
+          meta: { location_id: locationId, service_ids: missing },
         },
         HttpStatus.BAD_REQUEST,
       );
@@ -73,23 +79,27 @@ export class BookingsService {
   }
 
   private async validateService(
-    serviceId: string,
+    services: BookingDtoService[],
     companyId: string,
   ): Promise<boolean> {
-    const service = await this.prismaService.service.findFirst({
+    const serviceIds = services.map((service) => service.service_id);
+    const service = await this.prismaService.service.findMany({
       where: {
-        id: serviceId,
+        id: { in: serviceIds },
         companyId,
       },
     });
 
-    if (!service)
+    const foundIds = new Set(service.map((ls) => ls.id));
+    const missing = serviceIds.filter((id) => !foundIds.has(id));
+
+    if (missing.length > 0)
       throw new HttpException(
         {
           status: HttpStatus.BAD_REQUEST,
           title: "Ошибка Услуги",
-          detail: "Услуга не найдена",
-          meta: { service_id: serviceId },
+          detail: "Часть выбранных услуг не доступны",
+          meta: { service_ids: missing },
         },
         HttpStatus.BAD_REQUEST,
       );
@@ -99,19 +109,24 @@ export class BookingsService {
 
   private async validateEmployeeService(
     userId: string,
-    serviceId: string,
+    service: BookingDtoService[],
   ): Promise<boolean> {
-    const employee = await this.prismaService.userService.findFirst({
-      where: { userId, serviceId },
+    const serviceIds = service.map((service) => service.service_id);
+
+    const employee = await this.prismaService.userService.findMany({
+      where: { userId, serviceId: { in: serviceIds } },
     });
 
-    if (!employee)
+    const foundIds = new Set(employee.map((ls) => ls.serviceId));
+    const missing = serviceIds.filter((id) => !foundIds.has(id));
+
+    if (missing.length > 0)
       throw new HttpException(
         {
           status: HttpStatus.BAD_REQUEST,
           title: "Ошибка услуги",
-          detail: "Выбранный сотрудник не оказывает данную услугу.",
-          meta: { employee_id: userId },
+          detail: "Выбранный сотрудник не оказывает часть выбранных услуг",
+          meta: { employee_id: userId, service_ids: missing },
         },
         HttpStatus.BAD_REQUEST,
       );
@@ -251,17 +266,17 @@ export class BookingsService {
 
   async create(dto: BookingCreateDto, company_id: string) {
     return this.prismaService.$transaction(async (t) => {
-      await this.validateLocation(dto.location_id, dto.service_id);
+      await this.validateLocation(dto.location_id, dto.services);
       const locationId = await this.validateEmployeeLocation(
         dto.employee_id,
         dto.location_id,
       );
-      await this.validateEmployeeService(dto.employee_id, dto.service_id);
+      await this.validateEmployeeService(dto.employee_id, dto.services);
       const customerId = await this.validateCustomer(
         dto.customer_id,
         company_id,
       );
-      await this.validateService(dto.service_id, company_id);
+      await this.validateService(dto.services, company_id);
       await this.validateCustomerWorked(
         new Date(dto.date),
         locationId,
@@ -291,7 +306,16 @@ export class BookingsService {
           status: dto.status ?? "pending",
           employeeId: dto.employee_id,
           customerId: customerId,
-          serviceId: dto.service_id,
+          services: {
+            createMany: {
+              data: dto.services.map((service) => ({
+                serviceId: service.service_id,
+                price: service.price,
+                count: service.count,
+                duration: service.duration,
+              })),
+            },
+          },
           locationId: dto.location_id,
           companyId: company_id,
         },
@@ -322,14 +346,22 @@ export class BookingsService {
               avatar: true,
             },
           },
-          service: {
+          services: {
             select: {
               id: true,
-              name: true,
-              avatar: true,
-              mark: true,
-              price: { select: { price: true, costPrice: true } },
+              price: true,
+              count: true,
               duration: true,
+              service: {
+                select: {
+                  id: true,
+                  name: true,
+                  avatar: true,
+                  mark: true,
+                  price: { select: { price: true, costPrice: true } },
+                  duration: true,
+                },
+              },
             },
           },
         },
@@ -366,16 +398,35 @@ export class BookingsService {
           email: booking.employee.email,
           phone: booking.employee.phone,
         },
-        service: {
-          id: booking.service.id,
-          name: booking.service.name,
-          duration: booking.service.duration,
-          avatar: buildFileUrl(booking.service.avatar),
-          prices: {
-            price: booking.service.price?.price,
-            cost_price: booking.service.price?.costPrice,
+        services: booking.services.map((service) => ({
+          booking_service_id: service.id,
+          booking_service_price: service.price,
+          booking_service_count: service.count,
+          booking_service_duration: service.duration,
+          service: {
+            id: service.service.id,
+            name: service.service.name,
+            duration: service.service.duration,
+            avatar: buildFileUrl(service.service.avatar),
+            prices: {
+              price: service.service.price?.price,
+              cost_price: service.service.price?.costPrice,
+            },
           },
-        },
+        })),
+        /*
+          !!=====!! СТАРЫЙ ВЫВОД УСЛУГ !!=====!!
+        */
+        // service: {
+        //   id: booking.service.id,
+        //   name: booking.service.name,
+        //   duration: booking.service.duration,
+        //   avatar: buildFileUrl(booking.service.avatar),
+        //   prices: {
+        //     price: booking.service.price?.price,
+        //     cost_price: booking.service.price?.costPrice,
+        //   },
+        // },
       };
 
       return res;
@@ -383,16 +434,8 @@ export class BookingsService {
   }
 
   async getAll(userId: string, locationId: string, query: GetBookingsDto) {
-    const {
-      customer,
-      employee,
-      service,
-      status,
-      tag,
-      date,
-      sort,
-      ...pagination
-    } = query;
+    const { customer, employee, status, tag, date, sort, ...pagination } =
+      query;
     const { page, limit, skip } = getPaginationParams(pagination);
 
     const user = await this.prismaService.userLocation.findUnique({
@@ -461,11 +504,11 @@ export class BookingsService {
           ],
         },
       }),
-      ...(service && {
-        service: {
-          name: { contains: service, mode: Prisma.QueryMode.insensitive },
-        },
-      }),
+      // ...(service && {
+      //   service: {
+      //     name: { contains: service, mode: Prisma.QueryMode.insensitive },
+      //   },
+      // }),
     };
 
     const orderBy: Prisma.BookingOrderByWithRelationInput =
@@ -507,13 +550,22 @@ export class BookingsService {
               avatar: true,
             },
           },
-          service: {
+          services: {
             select: {
               id: true,
-              name: true,
-              avatar: true,
+              price: true,
+              count: true,
               duration: true,
-              price: { select: { price: true, costPrice: true } },
+              service: {
+                select: {
+                  id: true,
+                  name: true,
+                  avatar: true,
+                  mark: true,
+                  price: { select: { price: true, costPrice: true } },
+                  duration: true,
+                },
+              },
             },
           },
           order: {
@@ -563,16 +615,35 @@ export class BookingsService {
         phone: booking.employee.phone,
         position: booking.employee.position,
       },
-      service: {
-        id: booking.service.id,
-        name: booking.service.name,
-        duration: booking.service.duration,
-        avatar: buildFileUrl(booking.service.avatar),
-        prices: {
-          price: booking.service.price?.price,
-          cost_price: booking.service.price?.costPrice,
+      services: booking.services.map((service) => ({
+        booking_service_id: service.id,
+        booking_service_price: service.price,
+        booking_service_count: service.count,
+        booking_service_duration: service.duration,
+        service: {
+          id: service.service.id,
+          name: service.service.name,
+          duration: service.service.duration,
+          avatar: buildFileUrl(service.service.avatar),
+          prices: {
+            price: service.service.price?.price,
+            cost_price: service.service.price?.costPrice,
+          },
         },
-      },
+      })),
+      /*
+          !!=====!! СТАРЫЙ ВЫВОД УСЛУГ !!=====!!
+        */
+      // service: {
+      //   id: booking.service.id,
+      //   name: booking.service.name,
+      //   duration: booking.service.duration,
+      //   avatar: buildFileUrl(booking.service.avatar),
+      //   prices: {
+      //     price: booking.service.price?.price,
+      //     cost_price: booking.service.price?.costPrice,
+      //   },
+      // },
     }));
 
     return buildPaginatedResponse(data, total, page, limit);
@@ -611,14 +682,14 @@ export class BookingsService {
 
   async update(dto: BookingUpdateDto, bookingId: string, company_id: string) {
     await this.getById(bookingId);
-    await this.validateLocation(dto.location_id, dto.service_id);
+    await this.validateLocation(dto.location_id, dto.services);
     const locationId = await this.validateEmployeeLocation(
       dto.employee_id,
       dto.location_id,
     );
-    await this.validateEmployeeService(dto.employee_id, dto.service_id);
+    await this.validateEmployeeService(dto.employee_id, dto.services);
     const customerId = await this.validateCustomer(dto.customer_id, bookingId);
-    await this.validateService(dto.service_id, company_id);
+    await this.validateService(dto.services, company_id);
     await this.validateCustomerWorked(
       new Date(dto.date),
       locationId,
@@ -642,7 +713,7 @@ export class BookingsService {
         comment: dto.comment,
         employeeId: dto.employee_id,
         customerId: customerId,
-        serviceId: dto.service_id,
+        // serviceId: dto.service_id,
         locationId: dto.location_id,
       },
       select: {
@@ -666,19 +737,28 @@ export class BookingsService {
         employee: {
           select: { id: true, firstName: true, lastName: true, phone: true },
         },
-        service: {
+        services: {
           select: {
             id: true,
-            name: true,
-            avatar: true,
+            price: true,
+            count: true,
             duration: true,
-            price: { select: { price: true, costPrice: true } },
+            service: {
+              select: {
+                id: true,
+                name: true,
+                avatar: true,
+                mark: true,
+                price: { select: { price: true, costPrice: true } },
+                duration: true,
+              },
+            },
           },
         },
       },
     });
 
-    const res: IBookingDetails = {
+    const res = {
       id: booking.id,
       status: booking.status,
       start_time: booking.startTime,
@@ -703,16 +783,35 @@ export class BookingsService {
         last_name: booking.employee.lastName,
         phone: booking.employee.phone,
       },
-      service: {
-        id: booking.service.id,
-        name: booking.service.name,
-        duration: booking.service.duration,
-        avatar: buildFileUrl(booking.service.avatar),
-        prices: {
-          price: booking.service.price?.price,
-          cost_price: booking.service.price?.costPrice,
+      services: booking.services.map((service) => ({
+        booking_service_id: service.id,
+        booking_service_price: service.price,
+        booking_service_count: service.count,
+        booking_service_duration: service.duration,
+        service: {
+          id: service.service.id,
+          name: service.service.name,
+          duration: service.service.duration,
+          avatar: buildFileUrl(service.service.avatar),
+          prices: {
+            price: service.service.price?.price,
+            cost_price: service.service.price?.costPrice,
+          },
         },
-      },
+      })),
+      /*
+        !!=====!! СТАРЫЙ ВЫВОД УСЛУГ !!=====!!
+      */
+      // service: {
+      //   id: booking.service.id,
+      //   name: booking.service.name,
+      //   duration: booking.service.duration,
+      //   avatar: buildFileUrl(booking.service.avatar),
+      //   prices: {
+      //     price: booking.service.price?.price,
+      //     cost_price: booking.service.price?.costPrice,
+      //   },
+      // },
     };
 
     return res;
@@ -768,17 +867,22 @@ export class BookingsService {
             avatar: true,
           },
         },
-        service: {
+        services: {
           select: {
             id: true,
-            name: true,
+            price: true,
+            count: true,
             duration: true,
-            avatar: true,
-            price: { select: { price: true, costPrice: true } },
-            publicName: true,
-            mark: true,
-            category: true,
-            type: true,
+            service: {
+              select: {
+                id: true,
+                name: true,
+                avatar: true,
+                mark: true,
+                price: { select: { price: true, costPrice: true } },
+                duration: true,
+              },
+            },
           },
         },
         order: {
@@ -846,20 +950,39 @@ export class BookingsService {
         email: booking.employee.email,
         avatar: buildFileUrl(booking.employee.avatar),
       },
-      service: {
-        id: booking.service.id,
-        name: booking.service.name,
-        duration: booking.service.duration,
-        public_name: booking.service.publicName,
-        type: booking.service.type,
-        category: booking.service.category,
-        avatar: buildFileUrl(booking.service.avatar),
-        mark: booking.service.mark,
-        prices: {
-          price: booking.service.price?.price,
-          cost_price: booking.service.price?.costPrice,
+      services: booking.services.map((service) => ({
+        booking_service_id: service.id,
+        booking_service_price: service.price,
+        booking_service_count: service.count,
+        booking_service_duration: service.duration,
+        service: {
+          id: service.service.id,
+          name: service.service.name,
+          duration: service.service.duration,
+          avatar: buildFileUrl(service.service.avatar),
+          prices: {
+            price: service.service.price?.price,
+            cost_price: service.service.price?.costPrice,
+          },
         },
-      },
+      })),
+      /*
+        !!=====!! СТАРЫЙ ВЫВОД УСЛУГ !!=====!!
+      */
+      // service: {
+      //   id: booking.service.id,
+      //   name: booking.service.name,
+      //   duration: booking.service.duration,
+      //   public_name: booking.service.publicName,
+      //   type: booking.service.type,
+      //   category: booking.service.category,
+      //   avatar: buildFileUrl(booking.service.avatar),
+      //   mark: booking.service.mark,
+      //   prices: {
+      //     price: booking.service.price?.price,
+      //     cost_price: booking.service.price?.costPrice,
+      //   },
+      // },
       order: {
         id: booking.order?.id,
         status: booking.order?.status,
@@ -932,17 +1055,22 @@ export class BookingsService {
             avatar: true,
           },
         },
-        service: {
+        services: {
           select: {
             id: true,
-            name: true,
+            price: true,
+            count: true,
             duration: true,
-            avatar: true,
-            price: { select: { price: true, costPrice: true } },
-            publicName: true,
-            mark: true,
-            category: true,
-            type: true,
+            service: {
+              select: {
+                id: true,
+                name: true,
+                avatar: true,
+                mark: true,
+                price: { select: { price: true, costPrice: true } },
+                duration: true,
+              },
+            },
           },
         },
         order: {
@@ -986,20 +1114,40 @@ export class BookingsService {
         email: booking.employee.email,
         avatar: buildFileUrl(booking.employee.avatar),
       },
-      service: {
-        id: booking.service.id,
-        name: booking.service.name,
-        duration: booking.service.duration,
-        public_name: booking.service.publicName,
-        type: booking.service.type,
-        category: booking.service.category,
-        avatar: buildFileUrl(booking.service.avatar),
-        mark: booking.service.mark,
-        prices: {
-          price: booking.service.price?.price,
-          cost_price: booking.service.price?.costPrice,
+      services: booking.services.map((service) => ({
+        booking_service_id: service.id,
+        booking_service_price: service.price,
+        booking_service_count: service.count,
+        booking_service_duration: service.duration,
+        service: {
+          id: service.service.id,
+          name: service.service.name,
+          duration: service.service.duration,
+          avatar: buildFileUrl(service.service.avatar),
+          prices: {
+            price: service.service.price?.price,
+            cost_price: service.service.price?.costPrice,
+          },
         },
-      },
+      })),
+
+      /*
+        !!=====!! СТАРЫЙ ВЫВОД УСЛУГ !!=====!!
+      */
+      // service: {
+      //   id: booking.service.id,
+      //   name: booking.service.name,
+      //   duration: booking.service.duration,
+      //   public_name: booking.service.publicName,
+      //   type: booking.service.type,
+      //   category: booking.service.category,
+      //   avatar: buildFileUrl(booking.service.avatar),
+      //   mark: booking.service.mark,
+      //   prices: {
+      //     price: booking.service.price?.price,
+      //     cost_price: booking.service.price?.costPrice,
+      //   },
+      // },
       order: {
         id: booking.order?.id,
         status: booking.order?.status,
@@ -1069,15 +1217,22 @@ export class BookingsService {
             },
           },
         },
-        service: {
+        services: {
           select: {
             id: true,
-            name: true,
-            publicName: true,
-            avatar: true,
-            mark: true,
+            price: true,
+            count: true,
             duration: true,
-            category: true,
+            service: {
+              select: {
+                id: true,
+                name: true,
+                avatar: true,
+                mark: true,
+                price: { select: { price: true, costPrice: true } },
+                duration: true,
+              },
+            },
           },
         },
         order: true,
@@ -1107,23 +1262,43 @@ export class BookingsService {
         avatar: buildFileUrl(booking.location.avatar),
         address: booking.location.address,
       },
-      service: {
-        id: booking.service.id,
-        name: booking.service.name,
-        public_name: booking.service.publicName,
-        avatar: buildFileUrl(booking.service.avatar),
-        mark: booking.service.mark,
-        duration: booking.service.duration,
-        category: booking.service.category || null,
-      },
+      services: booking.services.map((service) => ({
+        booking_service_id: service.id,
+        booking_service_price: service.price,
+        booking_service_count: service.count,
+        booking_service_duration: service.duration,
+        service: {
+          id: service.service.id,
+          name: service.service.name,
+          duration: service.service.duration,
+          avatar: buildFileUrl(service.service.avatar),
+          prices: {
+            price: service.service.price?.price,
+            cost_price: service.service.price?.costPrice,
+          },
+        },
+      })),
+
+      /*
+        !!=====!! СТАРЫЙ ВЫВОД УСЛУГ !!=====!!
+      */
+      // service: {
+      //   id: booking.service.id,
+      //   name: booking.service.name,
+      //   public_name: booking.service.publicName,
+      //   avatar: buildFileUrl(booking.service.avatar),
+      //   mark: booking.service.mark,
+      //   duration: booking.service.duration,
+      //   category: booking.service.category || null,
+      // },
     }));
 
     return res;
   }
 
   /*
-    ===== СОЗДАНИЕ БРОНИРОВАНИЯ И ОФОРМЛЕНИЕ ЗАКАЗА СО СТОРОНЫ КЛИЕНТА =====
-  */
+      ===== СОЗДАНИЕ БРОНИРОВАНИЯ И ОФОРМЛЕНИЕ ЗАКАЗА СО СТОРОНЫ КЛИЕНТА =====
+    */
   async createCustomerBooking(
     dto: BookingCreateCustomerDto,
     customerId: string,
@@ -1166,7 +1341,7 @@ export class BookingsService {
       date: dto.date,
       comment: dto.comment,
       location_id: dto.location_id,
-      service_id: dto.service_id,
+      services: dto.services,
       employee_id: dto.employee_id,
       customer_id: customer?.customerId,
       status: dto.status,
@@ -1176,8 +1351,11 @@ export class BookingsService {
     return this.prismaService.$transaction(async (t) => {
       const booking = await this.create(createDto, company.id);
 
-      const subtotal = booking.service.prices.price ?? 0;
-
+      // const subtotal = booking.service.prices.price ?? 0;
+      const subtotal = booking.services.reduce(
+        (sum, s) => sum + Number(s.booking_service_price),
+        0,
+      );
       const order = await t.order.create({
         data: {
           status: "open",
@@ -1204,6 +1382,9 @@ export class BookingsService {
         data: { orderId: order.id, status: "new" },
       });
 
+      /*
+        !!=====!! ПОФИКСИТЬ ОТПРАВКУ УВЕДОМЛЕНИЯ О НОВОТ БРОНИРОВАНИИ !!=====!!
+      */
       await this.mailService.sendNewBookingNotify(
         booking.employee.email,
         booking,
@@ -1233,8 +1414,8 @@ export class BookingsService {
   }
 
   /*
-    ===== ПОДТВЕРЖДЕНИЕ БРОНИРОВАНИЯ И СОЗДАНИЕ ЗАКАЗА =====
-  */
+      ===== ПОДТВЕРЖДЕНИЕ БРОНИРОВАНИЯ И СОЗДАНИЕ ЗАКАЗА =====
+    */
   async confirmBooking(
     bookingId: string,
     dto: BookingCreateOrderDto,
@@ -1297,8 +1478,8 @@ export class BookingsService {
   }
 
   /*
-    ===== ЗАВЕРШЕНИЕ БРОНИРОВАНИЯ =====
-  */
+      ===== ЗАВЕРШЕНИЕ БРОНИРОВАНИЯ =====
+    */
   async completeBooking(bookingId: string) {
     return this.prismaService.$transaction(async (t) => {
       const booking = await t.booking.findUnique({

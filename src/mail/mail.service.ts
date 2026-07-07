@@ -4,6 +4,23 @@ import { HttpService } from "@nestjs/axios";
 import { firstValueFrom } from "rxjs";
 import { BookingStatus } from "@prisma/client";
 
+interface IBookingWithRelationService {
+  booking_service_id: string;
+  booking_service_price: number | null;
+  booking_service_count: number;
+  booking_service_duration: number | null;
+  service: {
+    id: string;
+    name: string;
+    duration: number;
+    avatar: string | null;
+    prices: {
+      price?: number | null;
+      cost_price?: number | null;
+    };
+  };
+}
+
 interface BookingWithRelations {
   id: string;
   status: BookingStatus;
@@ -28,15 +45,7 @@ interface BookingWithRelations {
     avatar: string | null;
     phone: string;
   };
-  service: {
-    id: string;
-    name: string;
-    duration: number;
-    prices: {
-      price: number | undefined;
-      cost_price: number | null | undefined;
-    };
-  };
+  services: IBookingWithRelationService[];
 }
 
 @Injectable()
@@ -193,7 +202,7 @@ export class MailService {
     const {
       employee,
       customer,
-      service,
+      services,
       date,
       start_time,
       end_time,
@@ -202,9 +211,12 @@ export class MailService {
     } = booking;
     const bookingUrl = `${process.env.APP_BASE_URL}/bookings/${booking.id}`;
     const formattedDate = this.formatDate(date);
-    const price = service.prices.price
-      ? `${service.prices.price} ₽`
-      : "по договорённости";
+
+    // const totalPrice = services.reduce(
+    //   (sum, s) => sum + Number(s.booking_service_price),
+    //   0,
+    // );
+    // const price = totalPrice ? `${totalPrice} ₽` : "по договорённости";
 
     const commentBlock = comment
       ? `
@@ -214,6 +226,27 @@ export class MailService {
     </div>
   `
       : "";
+
+    const servicesCount = services.length;
+
+    const servicesHtml = services
+      .map((s) => {
+        const servicePrice = s.booking_service_price ?? s.service.prices.price;
+        const priceLabel = servicePrice
+          ? `${servicePrice} ₽`
+          : "по договорённости";
+        const duration = s.booking_service_duration ?? s.service.duration;
+
+        return `
+      <div style="display:flex;align-items:flex-start;gap:14px;padding:12px 0;border-bottom:1px solid #e1dcd6;">
+        <div style="width:34px;height:34px;border-radius:8px;background:#e5e1db;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:16px;">✂️</div>
+        <div style="flex:1;">
+          <div style="font-size:14px;color:#322c27;font-weight:500;">${s.service.name} · ${duration} мин</div>
+          <div style="font-size:12px;color:#8a7f76;margin-top:2px;">${priceLabel}${s.booking_service_count > 1 ? ` · x${s.booking_service_count}` : ""}</div>
+        </div>
+      </div>`;
+      })
+      .join("");
 
     return `
     <div style="background:#f5f0eb;padding:24px;font-family:Arial,sans-serif;">
@@ -242,13 +275,12 @@ export class MailService {
                 </div>
               </div>
 
-              <div style="display:flex;align-items:flex-start;gap:14px;margin-bottom:14px;">
-                <div style="width:34px;height:34px;border-radius:8px;background:#e5e1db;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:16px;">✂️</div>
-                <div>
-                  <div style="font-size:11px;color:#8a7f76;font-weight:bold;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:2px;">Услуга</div>
-                  <div style="font-size:14px;color:#322c27;font-weight:500;">${service.name} · ${service.duration} мин</div>
-                  <div style="font-size:12px;color:#8a7f76;margin-top:2px;">${price}</div>
+              <div style="margin-bottom:14px;">
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+                  <div style="font-size:11px;color:#8a7f76;font-weight:bold;text-transform:uppercase;letter-spacing:0.06em;">Услуги</div>
+                  <div style="font-size:11px;color:#8a7f76;font-weight:bold;">${servicesCount}</div>
                 </div>
+                ${servicesHtml}
               </div>
 
               <div style="height:1px;background:#e5e1db;margin:16px 0;"></div>

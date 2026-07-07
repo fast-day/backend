@@ -21,7 +21,7 @@ export class OrdersService {
           orderId: null,
           status: BookingStatus.confirmed,
         },
-        include: { service: { select: { price: true } } },
+        include: { services: { select: { price: true } } },
       });
   
       if (!bookings.length)
@@ -35,7 +35,11 @@ export class OrdersService {
           HttpStatus.BAD_REQUEST,
         );
       
-      const subtotal = bookings.reduce((s, b) => s + (b.service.price?.price ?? 0), 0);
+      const subtotal = bookings.reduce(
+        (sum, booking) =>
+          sum + booking.services.reduce((s, service) => s + Number(service.price), 0),
+        0,
+      );
       
       const order = await t.order.create({
         data: {
@@ -247,21 +251,29 @@ export class OrdersService {
                 phone: true,
               }
             },
-            service: {
+            services: {
               select: {
                 id: true,
-                name: true,
-                category: true,
-                price: {
-                  select: {
-                    price: true,
-                    costPrice: true,
-                  },
-                },
+                price: true,
+                count: true,
                 duration: true,
-                mark: true,
-                type: true,
-                avatar: true,
+                service: {
+                  select: {
+                    id: true,
+                    name: true,
+                    category: true,
+                    price: {
+                      select: {
+                        price: true,
+                        costPrice: true,
+                      },
+                    },
+                    duration: true,
+                    mark: true,
+                    type: true,
+                    avatar: true,
+                  }
+                }
               },
             },
             customer: {
@@ -324,19 +336,22 @@ export class OrdersService {
           phone: book.employee.phone,
           avatar: buildFileUrl(book.employee.avatar),
         },
-        service: {
-          id: book.service.id,
-          name: book.service.name,
-          category: book.service.category,
-          mark: book.service.mark,
-          type: book.service.type,
-          duration: book.service.duration,
-          price: {
-            price: book.service.price?.price,
-            cost_price: book.service.price?.costPrice,
+        services: book.services.map((service) => ({
+          booking_service_id: service.id,
+          booking_service_price: service.price,
+          booking_service_count: service.count,
+          booking_service_duration: service.duration,
+          service: {
+            id: service.service.id,
+            name: service.service.name,
+            duration: service.service.duration,
+            avatar: buildFileUrl(service.service.avatar),
+            prices: {
+              price: service.service.price?.price,
+              cost_price: service.service.price?.costPrice,
+            },
           },
-          avatar: buildFileUrl(book.service.avatar),
-        },
+        })),
         customer: {
           id: book.customer.id,
           profile_id: book.customer.account?.id,
