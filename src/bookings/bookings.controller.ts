@@ -146,8 +146,9 @@ export class BookingsController {
   @UseGuards(AuthGuard, LoadUserGuard, ScopeGuard)
   @Scopes("booking-detail:read")
   @HttpCode(HttpStatus.OK)
-  details(@Param("booking_id") bookingId: string) {
-    return this.bookingsService.details(bookingId);
+  details(@Req() req, @Param("booking_id") bookingId: string) {
+    const companyId = req.user.companyId;
+    return this.bookingsService.details(bookingId, companyId);
   }
 
   @ApiBearerAuth()

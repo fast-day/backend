@@ -219,7 +219,7 @@ export class OrdersService {
     }));
   }
 
-  async details(orderId: string) {
+  async details(orderId: string, companyId: string) {
     const order = await this.prismaService.order.findFirst({
       where: { id: orderId },
       select: {
@@ -284,11 +284,6 @@ export class OrdersService {
                 phone: true,
                 email: true,
                 avatar: true,
-                account: {
-                  select: {
-                    id: true,
-                  }
-                }
               },
             },
           },
@@ -306,6 +301,21 @@ export class OrdersService {
         },
         HttpStatus.NOT_FOUND,
       );
+
+    /*
+      ===== В БУДУЩЕМ ПОМЕНЯТЬ КОНЦЕПЦИЮ - А ПОКА РАБОТАЕТ ТАК =====
+    */
+    const customerCompany = await this.prismaService.customerCompany.findUnique(
+      {
+        where: {
+          customerId_companyId: {
+            customerId: order.bookings[0].customer.id,
+            companyId,
+          },
+        },
+        select: { id: true },
+      },
+    );
 
     return {
       id: order.id,
@@ -354,7 +364,7 @@ export class OrdersService {
         })),
         customer: {
           id: book.customer.id,
-          profile_id: book.customer.account?.id,
+          profile_id: customerCompany?.id,
           first_name: book.customer.firstName,
           last_name: book.customer.lastName,
           full_name: getFullName(book.customer.firstName, book.customer.lastName),
