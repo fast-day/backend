@@ -829,7 +829,7 @@ export class BookingsService {
     return { success: true, booking };
   }
 
-  async details(bookingId: string) {
+  async details(bookingId: string, companyId: string) {
     const booking = await this.prismaService.booking.findUnique({
       where: { id: bookingId },
       select: {
@@ -850,11 +850,6 @@ export class BookingsService {
             email: true,
             birthday: true,
             avatar: true,
-            account: {
-              select: {
-                id: true,
-              },
-            },
           },
         },
         employee: {
@@ -911,6 +906,18 @@ export class BookingsService {
         HttpStatus.NOT_FOUND,
       );
 
+    const customerCompany = await this.prismaService.customerCompany.findUnique(
+      {
+        where: {
+          customerId_companyId: {
+            customerId: booking.customer.id,
+            companyId,
+          },
+        },
+        select: { id: true },
+      },
+    );
+
     const res = {
       id: booking.id,
       status: booking.status,
@@ -926,7 +933,7 @@ export class BookingsService {
       },
       customer: {
         id: booking.customer.id,
-        profile_id: booking.customer.account?.id,
+        profile_id: customerCompany?.id,
         first_name: booking.customer.firstName,
         last_name: booking.customer.lastName,
         full_name: getFullName(
@@ -1382,9 +1389,6 @@ export class BookingsService {
         data: { orderId: order.id, status: "new" },
       });
 
-      /*
-        !!=====!! ПОФИКСИТЬ ОТПРАВКУ УВЕДОМЛЕНИЯ О НОВОТ БРОНИРОВАНИИ !!=====!!
-      */
       await this.mailService.sendNewBookingNotify(
         booking.employee.email,
         booking,

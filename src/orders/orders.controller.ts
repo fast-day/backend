@@ -72,8 +72,9 @@ export class OrdersController {
   @UseGuards(AuthGuard, LoadUserGuard, ScopeGuard)
   @Scopes("booking-detail:read")
   @HttpCode(HttpStatus.OK)
-  details(@Param("order_id") orderId: string) {
-    return this.ordersService.details(orderId);
+  details(@Param("order_id") orderId: string, @Req() req) {
+    const companyId = req.user.companyId;
+    return this.ordersService.details(orderId, companyId);
   }
 
   @ApiBearerAuth()
