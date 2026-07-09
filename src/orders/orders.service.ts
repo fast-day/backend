@@ -139,12 +139,12 @@ export class OrdersService {
       is_payment: !ord.paidAt,
       booking_ids: ord.bookings.map((b) => b.id),
       customer: {
-        id: ord.bookings[0].customer.id,
-        first_name: ord.bookings[0].customer.firstName,
-        last_name: ord.bookings[0].customer.lastName,
-        full_name: getFullName(ord.bookings[0].customer.firstName, ord.bookings[0].customer.lastName),
-        phone: ord.bookings[0].customer.phone,
-        avatar: buildFileUrl(ord.bookings[0].customer.avatar),
+        id: ord.bookings[0]?.customer.id || null,
+        first_name: ord.bookings[0]?.customer.firstName || null,
+        last_name: ord.bookings[0]?.customer.lastName || null,
+        full_name: getFullName(ord.bookings[0]?.customer.firstName, ord.bookings[0]?.customer.lastName) || null,
+        phone: ord.bookings[0]?.customer.phone || null,
+        avatar: buildFileUrl(ord.bookings[0]?.customer.avatar) || null,
       }
     }));
 
