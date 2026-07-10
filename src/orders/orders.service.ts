@@ -212,7 +212,7 @@ export class OrdersService {
         id: booking.id,
         status: booking.status,
         tag: booking.tag,
-        date: booking.date,
+        date: booking.date.toISOString().split("T")[0],
         start_time: booking.startTime,
         end_time: booking.endTime
       }))
@@ -331,7 +331,7 @@ export class OrdersService {
         id: book.id,
         status: book.status,
         tag: book.tag,
-        date: book.date,
+        date: book.date.toISOString().split("T")[0],
         time: {
           start: book.startTime,
           end: book.endTime,

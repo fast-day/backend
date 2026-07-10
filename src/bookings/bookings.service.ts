@@ -373,7 +373,7 @@ export class BookingsService {
         tag: booking.tag,
         start_time: booking.startTime,
         end_time: booking.endTime,
-        date: booking.date,
+        date: booking.date.toISOString().split("T")[0],
         comment: booking.comment,
         customer: {
           id: booking.customer.id,
@@ -588,7 +588,7 @@ export class BookingsService {
       tag: booking.tag,
       start_time: booking.startTime,
       end_time: booking.endTime,
-      date: booking.date,
+      date: booking.date.toISOString().split("T")[0],
       comment: booking.comment,
       subtotal: booking.order?.subtotal,
       payment_method: booking.order?.paymentMethod,
@@ -763,7 +763,7 @@ export class BookingsService {
       status: booking.status,
       start_time: booking.startTime,
       end_time: booking.endTime,
-      date: booking.date,
+      date: booking.date.toISOString().split("T")[0],
       comment: booking.comment,
       location: {
         id: booking.location.id,
@@ -924,7 +924,7 @@ export class BookingsService {
       tag: booking.tag,
       start_time: booking.startTime,
       end_time: booking.endTime,
-      date: booking.date,
+      date: booking.date.toISOString().split("T")[0],
       comment: booking.comment,
       location: {
         id: booking.location.id,
@@ -1101,7 +1101,7 @@ export class BookingsService {
       tag: booking.tag,
       start_time: booking.startTime,
       end_time: booking.endTime,
-      date: booking.date,
+      date: booking.date.toISOString().split("T")[0],
       comment: booking.comment,
       location: {
         id: booking.location.id,
@@ -1254,7 +1254,7 @@ export class BookingsService {
       tag: booking.tag,
       start_time: booking.startTime,
       end_time: booking.endTime,
-      date: booking.date,
+      date: booking.date.toISOString().split("T")[0],
       employee: {
         id: booking.employee.id,
         first_name: booking.employee.firstName,
@@ -1389,10 +1389,10 @@ export class BookingsService {
         data: { orderId: order.id, status: "new" },
       });
 
-      await this.mailService.sendNewBookingNotify(
-        booking.employee.email,
-        booking,
-      );
+      await this.mailService.sendNewBookingNotify(booking.employee.email, {
+        ...booking,
+        date: new Date(booking.date),
+      });
 
       return {
         id: booking.id,

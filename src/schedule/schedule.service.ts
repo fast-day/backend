@@ -2,8 +2,6 @@ import { HttpException, HttpStatus, Injectable } from "@nestjs/common";
 import { PrismaService } from "src/prisma/prisma.service";
 import { ScheduleDto } from "./dto/schedule.dto";
 import { UserService } from "src/user/user.service";
-import { ISchedules } from "./types/schedules.type";
-import { ISchedule, ScheduleRes } from "./types/schedule.type";
 import { getFullName } from "src/shared/utils/get-full-name.util";
 
 @Injectable()
@@ -13,7 +11,7 @@ export class ScheduleService {
     private readonly userService: UserService,
   ) {}
 
-  async create(dto: ScheduleDto, locationId: string): Promise<ScheduleRes> {
+  async create(dto: ScheduleDto, locationId: string) {
     const { user_id: userId } = dto;
 
     const user = await this.prismaService.userLocation.findUnique({
@@ -33,7 +31,7 @@ export class ScheduleService {
       );
 
     const isExist = await this.prismaService.schedule.findFirst({
-      where: { date: dto.date, userLocationId: user.id },
+      where: { date: new Date(dto.date), userLocationId: user.id },
     });
 
     if (isExist)
@@ -50,7 +48,10 @@ export class ScheduleService {
 
     const schedule = await this.prismaService.$transaction(async (t) => {
       const sch = await t.schedule.create({
-        data: { date: dto.date, userLocation: { connect: { id: user.id } } },
+        data: {
+          date: new Date(dto.date),
+          userLocation: { connect: { id: user.id } },
+        },
         select: {
           id: true,
           date: true,
@@ -69,7 +70,10 @@ export class ScheduleService {
       return { ...sch, intervals };
     });
 
-    return schedule;
+    return {
+      ...schedule,
+      date: schedule.date.toISOString().split("T")[0],
+    };
   }
 
   async findAll(
@@ -77,7 +81,7 @@ export class ScheduleService {
     locationId: string,
     month?: string,
     year?: string,
-  ): Promise<ISchedules[]> {
+  ) {
     await this.userService.findByIdOptional(userId);
 
     if (!month || !year) {
@@ -103,14 +107,14 @@ export class ScheduleService {
       orderBy: { createdAt: "asc" },
     });
 
-    return schedule;
+    return schedule.map((schedule) => ({
+      id: schedule.id,
+      date: schedule.date.toISOString().split("T")[0],
+      intervals: schedule.intervals,
+    }));
   }
 
-  async update(
-    dto: ScheduleDto,
-    locationId: string,
-    scheduleId: number,
-  ): Promise<ISchedule> {
+  async update(dto: ScheduleDto, locationId: string, scheduleId: number) {
     const { user_id: userId } = dto;
 
     if (!scheduleId)
@@ -157,7 +161,7 @@ export class ScheduleService {
       const sch = await t.schedule.update({
         where: { id: scheduleId },
         data: {
-          date: dto.date,
+          date: new Date(dto.date),
           userLocation: { connect: { id: user.id } },
         },
         select: { id: true },
@@ -204,7 +208,7 @@ export class ScheduleService {
 
     const res = {
       id: schedule!.id,
-      date: schedule!.date,
+      date: schedule!.date.toISOString().split("T")[0],
       intervals: schedule!.intervals,
       location_id: schedule!.userLocation.locationId,
       user: {
@@ -269,11 +273,7 @@ export class ScheduleService {
     return { success: true, schedule_id: scheduleId };
   }
 
-  async findById(
-    userId: string,
-    scheduleId: number,
-    locationId: string,
-  ): Promise<ISchedule> {
+  async findById(userId: string, scheduleId: number, locationId: string) {
     if (!userId)
       throw new HttpException(
         {
@@ -336,7 +336,7 @@ export class ScheduleService {
 
     const res = {
       id: schedule.id,
-      date: schedule.date,
+      date: schedule.date.toISOString().split("T")[0],
       intervals: schedule.intervals,
       location_id: schedule.userLocation.locationId,
       user: {
@@ -351,7 +351,7 @@ export class ScheduleService {
         position: schedule.userLocation.user.position,
         is_banned: schedule.userLocation.isBanned,
       },
-    } satisfies ISchedule;
+    };
 
     return res;
   }
