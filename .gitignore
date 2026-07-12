@@ -80,6 +80,7 @@ docker-compose.override.local.yml
 # Backups
 *.backup
 *.sql
+!db/migrations/**/*.sql
 
 # Secrets
 *.pem
