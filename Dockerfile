@@ -26,4 +26,4 @@ COPY --from=development /app/db ./db
 
 EXPOSE 8080
 
-CMD ["sh", "-c", "yarn db:push && yarn db:seed && yarn start:prod"]
+CMD ["sh", "-c", "yarn db:migrate:deploy && yarn start:prod"]

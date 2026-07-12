@@ -81,6 +81,11 @@ enum ServiceType {
   offline
 }
 
+enum LocationType {
+  online
+  offline
+}
+
 enum MarkEnum {
   red
   orange
@@ -108,6 +113,13 @@ enum AppPage {
   EMPLOYEES
   ANALYTICS
   SETTINGS
+}
+
+enum ClientsRange {
+  zero
+  one_to_five
+  six_to_fifteen
+  sixteen_plus
 }
 
 model Session {
@@ -156,6 +168,7 @@ model Role {
 
   @@map("roles")
 }
+
 model Permission {
   id            Int             @id              @default(autoincrement())
 
@@ -193,6 +206,7 @@ model User {
   services      UserService[]  @relation("user_service")
   bookings      Booking[]      @relation("booking_employee")
   settings      Settings?      @relation("user_setting")
+  notes         CustomerNote[] @relation("note_author")
 
   sessions      Session[]      @relation("user_session")
 
@@ -200,6 +214,24 @@ model User {
   updatedAt     DateTime      @updatedAt        @map("updated_at")
 
   @@map("users")
+}
+
+model Invite {
+  id            String        @id               @default(cuid())
+
+  token         String        @unique
+  email         String
+  expiresAt     DateTime      @map("expires_at")
+  location      Location      @relation("location_invite", fields: [locationId], references: [id], onDelete: Cascade)
+  role          Int?           
+  locationId    String        @map("location_id")
+
+  action        InviteAction
+
+  createdAt     DateTime      @default(now())   @map("created_at")
+  updatedAt     DateTime      @updatedAt        @map("updated_at")
+
+  @@map("invites")
 }
 
 model PageVisibility {
@@ -343,10 +375,60 @@ model Company {
 
   orders        Order[]
 
+  onboarding    OnboardingSurvey? @relation("company_onboarding")
+
   createdAt     DateTime      @default(now())   @map("created_at")
   updatedAt     DateTime      @updatedAt        @map("updated_at")
 
   @@map("companies")
+}
+
+model OnboardingSurvey {
+  id            String        @id               @default(uuid())
+
+  clientsRange  ClientsRange? @map("clients_range")
+  source        String?
+  mainGoal      String?       @map("main_goal")
+
+  companyId     String        @unique
+  company       Company       @relation("company_onboarding", fields: [companyId], references: [id], onDelete: Cascade)
+  
+  createdAt     DateTime      @default(now())   @map("created_at")
+
+  @@map("onboarding_survey")
+}
+
+model Location {
+  id            String        @id               @default(uuid())
+
+  name          String
+  description   String?
+  phone         String
+  phoneNormalized String?     @map("phone_normalized")
+  comfort       String[]
+  category      String[]
+  avatar        String?
+
+  address       Address?      @relation("location_address")
+
+  active        Boolean       @default(true)
+
+  type          LocationType? @default(offline)
+
+  company       Company       @relation("company_locations", fields: [companyId], references: [id], onDelete: Cascade)
+  companyId     String        @map("company_id")
+
+  bookings      Booking[]     @relation("booking_locations")
+
+  users         UserLocation[]
+  services      LocationService[]               @relation("location_service")
+
+  invites       Invite[]      @relation("location_invite")
+
+  createdAt     DateTime      @default(now())   @map("created_at")
+  updatedAt     DateTime      @updatedAt        @map("updated_at")
+
+  @@map("locations")
 }
 
 model Theme {
@@ -368,6 +450,9 @@ model Theme {
   @@map("themes")
 }
 
+/*
+  ===== КЛИЕНТ =====
+*/
 model Customer {
   id            String        @id               @default(uuid())
 
@@ -381,7 +466,8 @@ model Customer {
 
   account       CustomerAccount?  @relation("account_customer")
   companies     CustomerCompany[] @relation("customer_company_customer")
-  bookings      Booking[]      @relation("booking_customer")
+  bookings      Booking[]       @relation("booking_customer")
+  notes         CustomerNote[]  @relation("note_customer")
 
   createdAt     DateTime      @default(now())   @map("created_at")
   updatedAt     DateTime      @updatedAt        @map("updated_at")
@@ -425,55 +511,29 @@ model CustomerCompany {
   @@map("customer_companies")
 }
 
-model Location {
-  id            String        @id               @default(uuid())
+model CustomerNote {
+  id            String        @id               @default(uuid(7))
+  
+  content       String
 
-  name          String
-  description   String?
-  phone         String
-  phoneNormalized String?     @map("phone_normalized")
-  comfort       String[]
-  category      String[]
-  avatar        String?
+  customerId    String        @map("customer_id")
+  customer      Customer      @relation("note_customer", fields: [customerId], references: [id])
 
-  address       Address?      @relation("location_address")
+  authorId      String        @map("author_id")
+  author        User          @relation("note_author", fields: [authorId], references: [id])
 
-  active        Boolean       @default(true)
-
-  company       Company       @relation("company_locations", fields: [companyId], references: [id], onDelete: Cascade)
-  companyId     String        @map("company_id")
-
-  bookings      Booking[]     @relation("booking_locations")
-
-  users         UserLocation[]
-  services      LocationService[]               @relation("location_service")
-
-  invites       Invite[]      @relation("location_invite")
-
+  bookingId     String?       @map("booking_id")
+  booking       Booking?      @relation("note_booking", fields: [bookingId], references: [id])
+  
   createdAt     DateTime      @default(now())   @map("created_at")
   updatedAt     DateTime      @updatedAt        @map("updated_at")
 
-  @@map("locations")
+  @@map("customer_note")
 }
 
-model Invite {
-  id            String        @id               @default(cuid())
-
-  token         String        @unique
-  email         String
-  expiresAt     DateTime      @map("expires_at")
-  location      Location      @relation("location_invite", fields: [locationId], references: [id], onDelete: Cascade)
-  role          Int?           
-  locationId    String        @map("location_id")
-
-  action        InviteAction
-
-  createdAt     DateTime      @default(now())   @map("created_at")
-  updatedAt     DateTime      @updatedAt        @map("updated_at")
-
-  @@map("invites")
-}
-
+/*
+  ===== УСЛУГИ СОТРУДНИКА =====
+*/
 model UserService {
   id            String        @id               @default(uuid())
 
@@ -490,6 +550,9 @@ model UserService {
   @@map("user_services")
 }
 
+/*
+  ===== УСЛУГИ ЛОКАЦИИ =====
+*/
 model LocationService {
   id            String        @id               @default(uuid())
 
@@ -506,6 +569,9 @@ model LocationService {
   @@map("location_services")
 }
 
+/*
+  ===== УСЛУГИ =====
+*/
 model Service {
   id            String        @id               @default(uuid())
 
@@ -591,8 +657,13 @@ model DiscountPrice {
   @@map("discount_price")
 }
 
+/*
+  ===== БРОНИРОВАНИЯ =====
+*/
 model Booking {
   id            String        @id               @default(uuid())
+
+  publicCode    Int           @unique           @default(autoincrement())       @map("public_code")
 
   startTime     String        @map("start_time")
   endTime       String        @map("end_time")
@@ -611,6 +682,7 @@ model Booking {
   // serviceId     String
 
   services      BookingService[]                @relation("booking_services")
+  notes         CustomerNote[]                  @relation("note_booking")
 
   employee      User          @relation("booking_employee", fields: [employeeId], references: [id])
   employeeId    String
@@ -651,8 +723,13 @@ model BookingService {
   @@map("booking_services")
 }
 
+/*
+  ===== ЗАКАЗЫ =====
+*/
 model Order {
   id            String        @id               @default(uuid())
+
+  publicCode    Int           @unique           @default(autoincrement())       @map("public_code")
 
   tag           String?       @unique
   status        OrderStatus   @default(pending)
@@ -674,11 +751,12 @@ model Order {
   @@map("orders")
 }
 
+/*
+  ===== РАСПИСАНИЕ =====
+*/
 model Schedule {
   id            Int           @id               @default(autoincrement())
 
-  // date          DateTime
-  // date          String
   date          DateTime      @db.Date
 
   intervals     ScheduleInterval[]              @relation("schedule_intervals_model")
