@@ -1,4 +1,4 @@
-import { ApiProperty, PartialType } from "@nestjs/swagger";
+import { ApiProperty } from "@nestjs/swagger";
 import {
   IsArray,
   IsBoolean,
@@ -7,9 +7,9 @@ import {
   IsString,
   IsUUID,
 } from "class-validator";
-import { LocationDto } from "./location.dto";
+import { CreateAddressDto } from "src/address/dto/create.dto";
 
-export class LocationUpdateDto extends PartialType(LocationDto) {
+export class LocationUpdateDto extends CreateAddressDto {
   @ApiProperty({
     example: "Яндекс",
     required: false,

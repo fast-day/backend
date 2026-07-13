@@ -25,6 +25,11 @@ enum THEME {
   dark
 }
 
+enum THEME_MODE {
+  light
+  dark
+}
+
 enum DAYS {
   mon
   tue
@@ -82,6 +87,11 @@ enum ServiceType {
 }
 
 enum LocationType {
+  online
+  offline
+}
+
+enum BookingType {
   online
   offline
 }
@@ -195,6 +205,8 @@ model User {
 
   status        UserStatus    @default(invited)
   position      String?
+
+  hasSeenProductTour           Boolean         @default(false)         @map("has_seed_product_tour")
   
   role          Role?          @relation("user_role", fields: [roleId], references: [id])
   roleId        Int?           @map("role_id")
@@ -206,9 +218,10 @@ model User {
   services      UserService[]  @relation("user_service")
   bookings      Booking[]      @relation("booking_employee")
   settings      Settings?      @relation("user_setting")
+  onboardingProgress           OnboardingProgress?      @relation("user_onboarding_progress")
   notes         CustomerNote[] @relation("note_author")
 
-  sessions      Session[]      @relation("user_session")
+  sessions      Session[]     @relation("user_session")
 
   createdAt     DateTime      @default(now())   @map("created_at")
   updatedAt     DateTime      @updatedAt        @map("updated_at")
@@ -234,6 +247,25 @@ model Invite {
   @@map("invites")
 }
 
+model OnboardingProgress {
+  id            String        @id               @default(uuid())
+
+  hasCreatedService           Boolean           @default(false)           @map("has_created_service")
+  hasCreatedBooking           Boolean           @default(false)           @map("has_created_booking")
+  hasCreatedSchedule          Boolean           @default(false)           @map("has_created_schedule")
+  /* ... В БУДУЩЕМ БУДЕТ ДОПОЛНЯТЬСЯ  ... */
+
+  isDismissed   Boolean       @map("is_dismissed")
+
+  user          User          @relation("user_onboarding_progress", fields: [userId], references: [id], onDelete: Cascade)
+  userId        String        @unique           @map("user_id")
+
+  createdAt     DateTime      @default(now())   @map("created_at")
+  updatedAt     DateTime      @updatedAt        @map("updated_at")
+
+  @@map("onboarding_progress")
+}
+
 model PageVisibility {
   id            String        @id               @default(uuid())
 
@@ -254,11 +286,52 @@ model Settings {
   userId        String        @unique           @map("user_id")
 
   pages         PageVisibility[]                @relation("settings_pages")
+  customTheme   Theme?        @relation("settings_custom_theme")
+  themePreset      ThemePreset? @relation("settings_theme_preset", fields: [themePresetId], references: [id])
+  themePresetId    Int?       @map("theme_preset_id")
 
   createdAt     DateTime      @default(now())   @map("created_at")
   updatedAt     DateTime      @updatedAt        @map("updated_at")
 
   @@map("settings")
+}
+
+model ThemePreset {
+  id               Int        @id               @default(autoincrement())
+
+  name             String     @unique
+  backgroundColor  String     @map("background_color")
+  primaryColor     String     @map("primary_color")
+  secondaryColor   String     @map("secondary_color")
+  onSurface        String     @map("on_surface")
+  surface          String
+  mode             THEME_MODE
+
+  settings         Settings[] @relation("settings_theme_preset")
+
+  createdAt     DateTime      @default(now())   @map("created_at")
+  updatedAt     DateTime      @updatedAt        @map("updated_at")
+
+  @@map("themes_preset")
+}
+
+model Theme {
+  id               Int        @id               @default(autoincrement())
+
+  backgroundColor  String     @map("background_color")
+  primaryColor     String     @map("primary_color")
+  secondaryColor   String     @map("secondary_color")
+  onSurface        String     @map("on_surface")
+  surface          String
+  theme            THEME
+
+  settings         Settings @relation("settings_custom_theme", fields: [settingsId], references: [id], onDelete: Cascade)
+  settingsId       String   @unique @map("settings_id")
+
+  createdAt     DateTime      @default(now())   @map("created_at")
+  updatedAt     DateTime      @updatedAt        @map("updated_at")
+
+  @@map("themes")
 }
 
 model UserLocation {
@@ -290,14 +363,14 @@ model Address {
 
   street        String?
   house         String?
-  city          String
+  city          String?
   post_code     String?
-  country       String
-  region        String
+  country       String?
+  region        String?
   timezone      String        @map("time_zone")
   timezoneoffset String       @map("time_zone_offset")
-  positionLat   Decimal       @map("position_lat")
-  positionLng   Decimal       @map("position_lng")
+  positionLat   Decimal?      @map("position_lat")
+  positionLng   Decimal?      @map("position_lng")
 
   // company       Company?      @relation("company_address", fields: [companyId], references: [id], onDelete: Cascade)
   // companyId     String?       @unique           @map("company_id")
@@ -357,12 +430,10 @@ model Company {
 
   users         User[]        @relation("company_user")
 
-  theme         Theme?        @relation("company_theme")
-
-  specialization Specialization @relation("company_specialization", fields: [specializationId], references: [id])
-  specializationId Int        @map("specialization_id")
-  industry      Industry      @relation("company_industry", fields: [industryId], references: [id])
-  industryId    Int           @map("industry_id")
+  specialization Specialization? @relation("company_specialization", fields: [specializationId], references: [id])
+  specializationId Int?       @map("specialization_id")
+  industry      Industry?     @relation("company_industry", fields: [industryId], references: [id])
+  industryId    Int?          @map("industry_id")
 
   services      Service[]     @relation("company_service")
   serviceCategory ServiceCategory[]             @relation("company_service_category")
@@ -413,7 +484,7 @@ model Location {
 
   active        Boolean       @default(true)
 
-  type          LocationType? @default(offline)
+  // type          LocationType? @default(offline)
 
   company       Company       @relation("company_locations", fields: [companyId], references: [id], onDelete: Cascade)
   companyId     String        @map("company_id")
@@ -429,25 +500,6 @@ model Location {
   updatedAt     DateTime      @updatedAt        @map("updated_at")
 
   @@map("locations")
-}
-
-model Theme {
-  id            String        @id               @default(uuid())
-
-  backgroundColor  String     @map("background_color")
-  primaryColor     String     @map("primary_color")
-  secondaryColor   String     @map("secondary_color")
-  onSurface        String     @map("on_surface")
-  surface          String
-  theme            THEME
-
-  company       Company       @relation("company_theme", fields: [companyId], references: [id], onDelete: Cascade)
-  companyId     String        @unique           @map("company_id")
-
-  createdAt     DateTime      @default(now())   @map("created_at")
-  updatedAt     DateTime      @updatedAt        @map("updated_at")
-
-  @@map("themes")
 }
 
 /*
@@ -671,6 +723,8 @@ model Booking {
   comment       String?
   status        BookingStatus @default(confirmed)
   tag           String?       @unique
+
+  type          BookingType? @default(offline)
 
   location      Location      @relation("booking_locations", fields: [locationId], references: [id])
   locationId    String

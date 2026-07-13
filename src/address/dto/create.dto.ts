@@ -26,7 +26,8 @@ export class CreateAddressDto {
     description: "Город",
   })
   @IsString()
-  city: string;
+  @IsOptional()
+  city?: string;
 
   @ApiProperty({
     example: "125075",
@@ -43,7 +44,8 @@ export class CreateAddressDto {
     description: "Страна",
   })
   @IsString()
-  country: string;
+  @IsOptional()
+  country?: string;
 
   @ApiProperty({
     example: "Свердловская область",
@@ -51,7 +53,8 @@ export class CreateAddressDto {
     description: "Регион/область",
   })
   @IsString()
-  region: string;
+  @IsOptional()
+  region?: string;
 
   @ApiProperty({
     example: "Asia/Yekaterinburg",
@@ -59,7 +62,7 @@ export class CreateAddressDto {
     description: "Часовой пояс",
   })
   @IsString()
-  timezone: string;
+  timezone!: string;
 
   @ApiProperty({
     example: "Asia/Yekaterinburg",
@@ -67,7 +70,7 @@ export class CreateAddressDto {
     description: "+05:00",
   })
   @IsString()
-  timezone_offset: string;
+  timezone_offset!: string;
 
   @ApiProperty({
     example: 56.838933,
@@ -75,7 +78,8 @@ export class CreateAddressDto {
     description: "Широта",
   })
   @IsNumber({ maxDecimalPlaces: 6 })
-  lat: string;
+  @IsOptional()
+  lat?: string;
 
   @ApiProperty({
     example: 60.595278,
@@ -83,7 +87,8 @@ export class CreateAddressDto {
     description: "Долгота",
   })
   @IsNumber({ maxDecimalPlaces: 6 })
-  lng: string;
+  @IsOptional()
+  lng?: string;
 }
 
 export class CreateLocationResponseDto {
@@ -93,12 +98,12 @@ export class CreateLocationResponseDto {
   })
   @IsUUID()
   @IsString()
-  location_id: string;
+  location_id!: string;
 
   @ApiProperty({
     example: "Яндекс",
     description: "Название локации",
   })
   @IsString()
-  name: string;
+  name!: string;
 }

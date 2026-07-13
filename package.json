@@ -27,6 +27,7 @@
     "db:migrate:dev": "prisma migrate dev --schema=./db/schema.prisma",
     "db:migrate:deploy": "prisma migrate deploy --schema=./db/schema.prisma",
     "db:seed": "ts-node ./db/seed.ts",
+    "db:seed:prod": "npx ts-node ./db/seed.ts",
     "docker-dev:up": "docker compose -f docker-compose.dev.yml up -d",
     "docker-dev:down": "docker compose -f docker-compose.dev.yml down"
   },

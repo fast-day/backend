@@ -44,9 +44,8 @@ export class UserService {
                 avatar: true,
                 address: {
                   select: {
-                    city: true,
-                    country: true,
-                    region: true,
+                    timezone: true,
+                    timezoneoffset: true,
                   },
                 },
               },
@@ -61,6 +60,28 @@ export class UserService {
                 isVisible: true,
               },
             },
+            // themePreset: {
+            //   select: {
+            //     id: true,
+            //     backgroundColor: true,
+            //     primaryColor: true,
+            //     secondaryColor: true,
+            //     onSurface: true,
+            //     surface: true,
+            //     mode: true,
+            //   },
+            // },
+            // customTheme: {
+            //   select: {
+            //     id: true,
+            //     backgroundColor: true,
+            //     primaryColor: true,
+            //     secondaryColor: true,
+            //     onSurface: true,
+            //     surface: true,
+            //     theme: true,
+            //   },
+            // },
           },
         },
         company: {
@@ -70,17 +91,6 @@ export class UserService {
             publicName: true,
             logo: true,
             currency: true,
-            locations: {
-              select: {
-                users: true,
-                id: true,
-                name: true,
-                phone: true,
-                address: { select: { country: true } },
-              },
-            },
-            industry: { select: { id: true, name: true } },
-            specialization: { select: { id: true, name: true } },
           },
         },
       },
@@ -95,8 +105,6 @@ export class UserService {
           logo: buildFileUrl(user.company.logo),
           site_url: `http://app.fast-day.ru/${user.company.publicName}`,
           currency: user.company?.currency,
-          industry: user.company?.industry,
-          specialization: user.company?.specialization.name,
         }
       : null;
 
@@ -104,13 +112,10 @@ export class UserService {
       id: loc.location.id,
       name: loc.location.name,
       avatar: buildFileUrl(loc.location.avatar),
-      full_address: [
-        loc.location.address?.city,
-        loc.location.address?.region,
-        loc.location.address?.country,
-      ]
-        .filter(Boolean)
-        .join(", "),
+      timezone: {
+        timezone: loc.location.address?.timezone,
+        timezone_offset: loc.location.address?.timezoneoffset,
+      },
     }));
 
     return {
@@ -130,9 +135,32 @@ export class UserService {
           page: p.page,
           is_visible: p.isVisible,
         })),
+
+        /*
+          ===== НА БУДУЩЕЕ НАСТРОЙКА ТЕМЫ =====
+        */
+        // theme: {
+        //   custom: {
+        //     id: user.settings?.customTheme?.id,
+        //     background_color: user.settings?.customTheme?.backgroundColor,
+        //     primary_color: user.settings?.customTheme?.primaryColor,
+        //     secondary_color: user.settings?.customTheme?.secondaryColor,
+        //     on_surface: user.settings?.customTheme?.onSurface,
+        //     surface: user.settings?.customTheme?.surface,
+        //     theme: user.settings?.customTheme?.theme,
+        //   },
+        //   brand: {
+        //     id: user.settings?.themePreset?.id,
+        //     background_color: user.settings?.themePreset?.backgroundColor,
+        //     primary_color: user.settings?.themePreset?.primaryColor,
+        //     secondary_color: user.settings?.themePreset?.secondaryColor,
+        //     on_surface: user.settings?.themePreset?.onSurface,
+        //     surface: user.settings?.themePreset?.surface,
+        //     mode: user.settings?.themePreset?.mode,
+        //   },
+        // },
       },
     };
-    // return user;
   }
 
   public async checkBanned(locationId: string, userId: string) {

@@ -13,6 +13,8 @@ import { BufferedFile } from "src/minio/file.model";
 import { MinioService } from "src/minio/minio.service";
 import { buildFileUrl } from "src/shared/utils/build-url";
 import { UpdateCompanyDto } from "./dto/update.dto";
+import { Prisma } from "@prisma/client";
+import { customAlphabet } from "nanoid";
 
 @Injectable()
 export class CompanyService {
@@ -23,7 +25,20 @@ export class CompanyService {
     private readonly minioService: MinioService,
   ) {}
 
-  // улучшить переписав на prisma.$transaction
+  private async generatePublicName(slug: string, t: Prisma.TransactionClient) {
+    const exist = await t.company.findMany({
+      where: { publicName: { startsWith: slug } },
+      select: { publicName: true },
+    });
+
+    if (exist.length === 0) return slug;
+
+    const taken = new Set(exist.map((c) => c.publicName));
+    if (!taken.has(slug)) return slug;
+
+    return `${slug}-${customAlphabet("abcdefghijklmnopqrstuvwxyz0123456789", 6)()}`;
+  }
+
   async create(dto: CreateCompanyDto, userId: string) {
     const user = await this.userService.findById(userId);
 
@@ -49,32 +64,15 @@ export class CompanyService {
         { cause: new Error() },
       );
 
-    const companyIsExist = await this.prismaService.company.findUnique({
-      where: {
-        publicName: slugify(dto.name, { lowercase: true, separator: "-" }),
-      },
-    });
-
-    if (companyIsExist)
-      throw new HttpException(
-        {
-          status: HttpStatus.CONFLICT,
-          title: "Данное имя компании уже занято",
-          recommendations: [
-            "Если возникли трудности, обратитесь в службу поддержки.",
-          ],
-        },
-        HttpStatus.CONFLICT,
-      );
+    const slug = slugify(dto.name, { lowercase: true, separator: "-" });
 
     const company = await this.prismaService.$transaction(async (t) => {
+      const publicName = await this.generatePublicName(slug, t);
       const company = await t.company.create({
         data: {
           name: dto.name,
-          publicName: slugify(dto.name, { lowercase: true, separator: "-" }),
+          publicName,
           currency: dto.currency,
-          specialization: { connect: { id: dto.specialization } },
-          industry: { connect: { id: dto.industry } },
           users: { connect: { id: user.id } },
         },
         select: {
@@ -86,7 +84,7 @@ export class CompanyService {
 
       const locationData = {
         ...dto,
-        name: company.name,
+        name: "Основная",
         phone: user.phone,
       };
 
@@ -152,17 +150,6 @@ export class CompanyService {
         publicName: true,
         logo: true,
         currency: true,
-        industry: {
-          select: {
-            id: true,
-            name: true,
-          },
-        },
-        specialization: {
-          select: {
-            name: true,
-          },
-        },
       },
     });
 
@@ -172,11 +159,6 @@ export class CompanyService {
       logo: buildFileUrl(company.logo),
       site_url: `http://app.fast-day.ru/${company.publicName}`,
       currency: company.currency,
-      industry: {
-        id: company.industry.id,
-        name: company.industry.name,
-      },
-      specialization: company.specialization.name,
     };
   }
 }
