@@ -46,6 +46,14 @@ export class UserService {
                   select: {
                     timezone: true,
                     timezoneoffset: true,
+                    street: true,
+                    region: true,
+                    country: true,
+                    city: true,
+                    house: true,
+                    positionLat: true,
+                    positionLng: true,
+                    post_code: true,
                   },
                 },
               },
@@ -91,6 +99,7 @@ export class UserService {
             publicName: true,
             logo: true,
             currency: true,
+            onboarding: { select: { id: true } },
           },
         },
       },
@@ -116,6 +125,28 @@ export class UserService {
         timezone: loc.location.address?.timezone,
         timezone_offset: loc.location.address?.timezoneoffset,
       },
+      address: {
+        full_address:
+          [
+            loc.location.address?.country,
+            loc.location.address?.region,
+            loc.location.address?.city,
+            loc.location.address?.street,
+            loc.location.address?.house,
+          ]
+            .filter(Boolean)
+            .join(", ") || null,
+        street: loc.location.address?.street,
+        house: loc.location.address?.house,
+        city: loc.location.address?.city,
+        region: loc.location.address?.region,
+        country: loc.location.address?.country,
+        post_code: loc.location.address?.post_code,
+        map: {
+          lat: loc.location.address?.positionLat,
+          lng: loc.location.address?.positionLng,
+        },
+      },
     }));
 
     return {
@@ -135,6 +166,7 @@ export class UserService {
           page: p.page,
           is_visible: p.isVisible,
         })),
+        is_survey: !!user.company?.onboarding,
 
         /*
           ===== НА БУДУЩЕЕ НАСТРОЙКА ТЕМЫ =====

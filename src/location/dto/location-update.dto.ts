@@ -7,9 +7,9 @@ import {
   IsString,
   IsUUID,
 } from "class-validator";
-import { CreateAddressDto } from "src/address/dto/create.dto";
+import { UpdateAddressDto } from "src/address/dto/update.dto";
 
-export class LocationUpdateDto extends CreateAddressDto {
+export class LocationUpdateDto extends UpdateAddressDto {
   @ApiProperty({
     example: "Яндекс",
     required: false,
