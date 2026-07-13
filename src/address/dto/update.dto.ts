@@ -1,7 +1,7 @@
 import { ApiProperty } from "@nestjs/swagger";
 import { IsNumber, IsOptional, IsString, IsUUID } from "class-validator";
 
-export class CreateAddressDto {
+export class UpdateAddressDto {
   @ApiProperty({
     example: "ул. Вайнера",
     required: false,
@@ -62,7 +62,8 @@ export class CreateAddressDto {
     description: "Часовой пояс",
   })
   @IsString()
-  timezone!: string;
+  @IsOptional()
+  timezone?: string;
 
   @ApiProperty({
     example: "Asia/Yekaterinburg",
@@ -70,7 +71,8 @@ export class CreateAddressDto {
     description: "+05:00",
   })
   @IsString()
-  timezone_offset!: string;
+  @IsOptional()
+  timezone_offset?: string;
 
   @ApiProperty({
     example: 56.838933,
