@@ -253,7 +253,6 @@ model OnboardingProgress {
   hasCreatedService           Boolean           @default(false)           @map("has_created_service")
   hasCreatedBooking           Boolean           @default(false)           @map("has_created_booking")
   hasCreatedSchedule          Boolean           @default(false)           @map("has_created_schedule")
-  /* ... В БУДУЩЕМ БУДЕТ ДОПОЛНЯТЬСЯ  ... */
 
   isDismissed   Boolean       @map("is_dismissed")
 

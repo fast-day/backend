@@ -3775,6 +3775,7 @@ __metadata:
     nodemailer: "npm:^8.0.7"
     passport: "npm:^0.7.0"
     passport-jwt: "npm:^4.0.1"
+    petrovich: "npm:^0.2.1"
     prettier: "npm:^3.4.2"
     prisma: "npm:^6.16.2"
     redis: "npm:^5.8.3"
@@ -9569,6 +9570,13 @@ __metadata:
   version: 1.0.0
   resolution: "perfect-debounce@npm:1.0.0"
   checksum: 10/220343acf52976947958fef3599849471605316e924fe19c633ae2772576298e9d38f02cefa8db46f06607505ce7b232cbb35c9bfd477bd0329bd0a2ce37c594
+  languageName: node
+  linkType: hard
+
+"petrovich@npm:^0.2.1":
+  version: 0.2.1
+  resolution: "petrovich@npm:0.2.1"
+  checksum: 10/bc4f6650f1795ac8162738b251142b7bc7fbc2e1edc3227294e5ced7c4f4bbabeb50ece95213857f3649055b2be764a749b8af95ccf93bd0bad2873b3d207299
   languageName: node
   linkType: hard
 
