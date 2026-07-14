@@ -15,6 +15,7 @@ import { buildFileUrl } from "src/shared/utils/build-url";
 import { UpdateCompanyDto } from "./dto/update.dto";
 import { Prisma } from "@prisma/client";
 import { customAlphabet } from "nanoid";
+import { toGenitive } from "src/shared/utils/petrovich.util";
 
 @Injectable()
 export class CompanyService {
@@ -68,9 +69,10 @@ export class CompanyService {
 
     const company = await this.prismaService.$transaction(async (t) => {
       const publicName = await this.generatePublicName(slug, t);
+      const name = toGenitive(dto.name);
       const company = await t.company.create({
         data: {
-          name: dto.name,
+          name: `Кабинет ${name}`,
           publicName,
           currency: dto.currency,
           users: { connect: { id: user.id } },
