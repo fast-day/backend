@@ -16,6 +16,7 @@ import { UpdateCompanyDto } from "./dto/update.dto";
 import { Prisma } from "@prisma/client";
 import { customAlphabet } from "nanoid";
 import { toGenitive } from "src/shared/utils/petrovich.util";
+import { getFullName } from "src/shared/utils/get-full-name.util";
 
 @Injectable()
 export class CompanyService {
@@ -80,7 +81,31 @@ export class CompanyService {
         select: {
           id: true,
           name: true,
+          publicName: true,
+          logo: true,
           currency: true,
+          onboarding: { select: { id: true } },
+          users: {
+            select: {
+              id: true,
+              email: true,
+              phone: true,
+              lastName: true,
+              firstName: true,
+              avatar: true,
+              role: { select: { id: true, name: true } },
+              settings: {
+                select: {
+                  pages: {
+                    select: {
+                      page: true,
+                      isVisible: true,
+                    },
+                  },
+                },
+              },
+            },
+          },
         },
       });
 
@@ -90,7 +115,7 @@ export class CompanyService {
         phone: user.phone,
       };
 
-      await this.locationService.createFirst(
+      const location = await this.locationService.createFirst(
         t,
         locationData,
         userId,
@@ -98,10 +123,37 @@ export class CompanyService {
         company.id,
       );
 
-      return company;
+      return { ...company, location };
     });
 
-    return company;
+    return {
+      id: company.users[0].id,
+      email: company.users[0].email,
+      phone: company.users[0].phone,
+      role: company.users[0].role?.name,
+      role_id: { id: company.users[0].role?.id },
+      first_name: company.users[0].firstName,
+      last_name: company.users[0].lastName,
+      full_name: getFullName(
+        company.users[0].firstName,
+        company.users[0].lastName,
+      ),
+      avatar: buildFileUrl(company.users[0].avatar),
+      locations: [company.location],
+      company: {
+        id: company.id,
+        name: company.name,
+        site_url: `http://app.fast-day.ru/${company.publicName}`,
+        currency: company.currency,
+      },
+      settings: {
+        pages: company.users[0].settings?.pages.map((p) => ({
+          page: p.page,
+          is_visible: p.isVisible,
+        })),
+        is_survey: !!company?.onboarding,
+      },
+    };
   }
 
   async findById(id: string) {

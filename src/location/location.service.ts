@@ -128,9 +128,14 @@ export class LocationService {
         company: { connect: { id: companyId } },
         ...locationDto,
       },
+      select: {
+        id: true,
+        name: true,
+        avatar: true,
+      },
     });
 
-    await this.addressService.create(t, dto, location.id);
+    const address = await this.addressService.create(t, dto, location.id);
 
     await t.userLocation.create({
       data: {
@@ -139,6 +144,12 @@ export class LocationService {
         roleId,
       },
     });
+
+    return {
+      ...location,
+      avatar: buildFileUrl(location.avatar),
+      address,
+    };
   }
 
   async findById(id: string) {
