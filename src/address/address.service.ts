@@ -26,8 +26,41 @@ export class AddressService {
         positionLat: dto.lat,
         positionLng: dto.lng,
       },
+      select: {
+        timezone: true,
+        timezoneoffset: true,
+        street: true,
+        region: true,
+        country: true,
+        city: true,
+        house: true,
+        positionLat: true,
+        positionLng: true,
+        post_code: true,
+      },
     });
 
-    return address;
+    return {
+      full_address:
+        [
+          address.country,
+          address.region,
+          address.city,
+          address.street,
+          address.house,
+        ]
+          .filter(Boolean)
+          .join(", ") || null,
+      street: address.street,
+      house: address.house,
+      city: address.city,
+      region: address.region,
+      country: address.country,
+      post_code: address.post_code,
+      map: {
+        lat: address.positionLat,
+        lng: address.positionLng,
+      },
+    };
   }
 }
