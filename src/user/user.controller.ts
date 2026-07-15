@@ -21,6 +21,7 @@ import {
   ApiBody,
   ApiOperation,
   ApiResponse,
+  ApiTags,
 } from "@nestjs/swagger/dist/decorators";
 import { MeDto } from "./dto/me.dto";
 import {
@@ -38,6 +39,7 @@ import { Scopes } from "src/access/decorator/scopes.decorator";
 import { LoadUserGuard } from "./guard/user.guard";
 import { ChangePasswordDto } from "./dto/change-password.dto";
 
+@ApiTags("Личная информация")
 @Controller()
 export class UserController {
   constructor(private readonly userService: UserService) {}

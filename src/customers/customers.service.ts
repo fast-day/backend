@@ -394,7 +394,7 @@ export class CustomersService {
       throw new HttpException(
         {
           status: HttpStatus.NOT_FOUND,
-          title: "Ошибка клиент не найдет",
+          title: "Ошибка клиент не найден",
           detail: "Не удалось загрузить информацию о клиенте",
           meta: { customer_id: customerId },
         },
