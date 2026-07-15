@@ -7,14 +7,14 @@ export class UnAuthorizedDto {
     description: "Error message",
   })
   @IsString()
-  message: string;
+  message!: string;
 
   @ApiProperty({
     example: 401,
     description: "Error status",
   })
   @IsNumber()
-  status: number;
+  status!: number;
 }
 
 export class NotFoundDto {
@@ -23,21 +23,21 @@ export class NotFoundDto {
     description: "Error status",
   })
   @IsNumber()
-  status: number;
+  status!: number;
 
   @ApiProperty({
     example: "Not Found",
     description: "Error title",
   })
   @IsString()
-  title: string;
+  title!: string;
 
   @ApiProperty({
     example: "Not Found Detail",
     description: "Error message",
   })
   @IsString()
-  detail: string;
+  detail!: string;
 }
 
 export class ConflictDto {
@@ -46,21 +46,21 @@ export class ConflictDto {
     description: "Error status",
   })
   @IsNumber()
-  status: number;
+  status!: number;
 
   @ApiProperty({
     example: "Заголовок",
     description: "Error title",
   })
   @IsString()
-  title: string;
+  title!: string;
 
   @ApiProperty({
     example: "Детали",
     description: "Error message",
   })
   @IsString()
-  detail: string;
+  detail!: string;
 
   @ApiProperty({
     example: {
@@ -69,5 +69,5 @@ export class ConflictDto {
     description: "Error message",
   })
   @IsString()
-  meta: string;
+  meta!: string;
 }

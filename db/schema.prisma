@@ -132,6 +132,11 @@ enum ClientsRange {
   sixteen_plus
 }
 
+enum CUSTOMER_NOTE_TAG {
+  new
+  general
+}
+
 model Session {
   id            String        @id               @default(uuid())
 
@@ -206,7 +211,7 @@ model User {
   status        UserStatus    @default(invited)
   position      String?
 
-  hasSeenProductTour           Boolean         @default(false)         @map("has_seed_product_tour")
+  hasSeenProductTour           Boolean         @default(false)         @map("has_seen_product_tour")
   
   role          Role?          @relation("user_role", fields: [roleId], references: [id])
   roleId        Int?           @map("role_id")
@@ -254,7 +259,7 @@ model OnboardingProgress {
   hasCreatedBooking           Boolean           @default(false)           @map("has_created_booking")
   hasCreatedSchedule          Boolean           @default(false)           @map("has_created_schedule")
 
-  isDismissed   Boolean       @map("is_dismissed")
+  isDismissed   Boolean       @default(false)   @map("is_dismissed")
 
   user          User          @relation("user_onboarding_progress", fields: [userId], references: [id], onDelete: Cascade)
   userId        String        @unique           @map("user_id")
@@ -564,8 +569,15 @@ model CustomerCompany {
 
 model CustomerNote {
   id            String        @id               @default(uuid(7))
+
+  name          String
+  tag           CUSTOMER_NOTE_TAG               @default(new)
   
-  content       String
+  content       Json?
+
+  isPinned      Boolean       @default(false)
+  isArchived    Boolean       @default(false)
+  isLocked      Boolean       @default(false)
 
   customerId    String        @map("customer_id")
   customer      Customer      @relation("note_customer", fields: [customerId], references: [id])
@@ -680,6 +692,10 @@ model ServicePrice {
   price         Int
   costPrice     Int?          @map("cost_price") // себестоимость
 
+  requiresDeposit             Boolean           @default(false)           @map("requires_deposit")
+  depositPercent              Int?              @map("deposit_percent")
+  cancellationDeadlineHours   Int?              @default(24)              @map("cancellation_deadline_hours")
+
   service       Service       @relation("service_prices", fields: [serviceId], references: [id], onDelete: Cascade)
   serviceId     String        @unique           @map("service_id")
 
@@ -792,6 +808,8 @@ model Order {
   paymentMethod PaymentType?   @map("payment_method")
   paidAt        DateTime?     @map("paid_at")
   comment       String?
+
+  isDeposit     Boolean       @default(false)   @map("is_deposit")
 
   companyId     String        @map("company_id")
   company       Company       @relation(fields: [companyId], references: [id])

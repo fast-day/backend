@@ -12,7 +12,9 @@ import { LoadUserGuard } from "src/user/guard/user.guard";
 import { CompanyGuard } from "src/access/guard/company.guard";
 import { AuthGuard } from "src/auth/guard/auth.guard";
 import { SurveyDto } from "./dto/survey.dto";
+import { ApiTags } from "@nestjs/swagger";
 
+@ApiTags("Опросники & Обучалки")
 @Controller("onboarding")
 export class OnboardingController {
   constructor(private readonly onboardingService: OnboardingService) {}

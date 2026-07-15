@@ -30,7 +30,7 @@ import { LogoutDto } from "./dto/logout.dto";
 import { LoadUserGuard } from "src/user/guard/user.guard";
 import { Authorized } from "./decorators/authorized.decorator";
 
-@ApiTags("Authorization")
+@ApiTags("Авторизация")
 @Controller()
 export class AuthController {
   constructor(private readonly authService: AuthService) {}

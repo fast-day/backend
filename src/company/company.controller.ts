@@ -13,7 +13,7 @@ import {
   UseInterceptors,
 } from "@nestjs/common";
 import { CompanyService } from "./company.service";
-import { CreateCompanyDto, CreateCompanyResponseDto } from "./dto/create.dto";
+import { CreateCompanyDto } from "./dto/create.dto";
 import { Authorization } from "src/auth/decorators/auth.decorator";
 import { Authorized } from "src/auth/decorators/authorized.decorator";
 import { SpecializationService } from "./specialization.service";
@@ -41,6 +41,7 @@ import { GlobalSuccessDto } from "src/shared/dto/global.dto";
 import { BufferedFile } from "src/minio/file.model";
 import { UpdateCompanyDto } from "./dto/update.dto";
 import { CompanyGuard } from "src/access/guard/company.guard";
+import { MeDto } from "src/user/dto/me.dto";
 
 @ApiTags("Компании")
 @Controller("company")
@@ -57,7 +58,7 @@ export class CompanyController {
   @ApiResponse({
     status: HttpStatus.CREATED,
     description: "created",
-    type: CreateCompanyResponseDto,
+    type: MeDto,
   })
   @ApiResponse({
     status: HttpStatus.UNAUTHORIZED,
