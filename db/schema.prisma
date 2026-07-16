@@ -133,7 +133,11 @@ enum ClientsRange {
 }
 
 enum CUSTOMER_NOTE_TAG {
-  new
+  session
+  progress
+  plan
+  important
+  administrative
   general
 }
 
@@ -523,7 +527,6 @@ model Customer {
   account       CustomerAccount?  @relation("account_customer")
   companies     CustomerCompany[] @relation("customer_company_customer")
   bookings      Booking[]       @relation("booking_customer")
-  notes         CustomerNote[]  @relation("note_customer")
 
   createdAt     DateTime      @default(now())   @map("created_at")
   updatedAt     DateTime      @updatedAt        @map("updated_at")
@@ -557,6 +560,8 @@ model CustomerCompany {
   note          String?
   isBanned      Boolean?      @default(false)   @map("is_banned")
 
+  documents     CustomerNote[] @relation("note_customer_company")
+
   company       Company       @relation("company_customers", fields: [companyId], references: [id], onDelete: Cascade)
   companyId     String        @map("company_id")
 
@@ -570,8 +575,8 @@ model CustomerCompany {
 model CustomerNote {
   id            String        @id               @default(uuid(7))
 
-  name          String
-  tag           CUSTOMER_NOTE_TAG               @default(new)
+  name          String?
+  tag           CUSTOMER_NOTE_TAG?              @default(general)
   
   content       Json?
 
@@ -579,8 +584,8 @@ model CustomerNote {
   isArchived    Boolean       @default(false)
   isLocked      Boolean       @default(false)
 
-  customerId    String        @map("customer_id")
-  customer      Customer      @relation("note_customer", fields: [customerId], references: [id])
+  customerCompanyId           String             @map("customer_company_id")
+  customerCompany             CustomerCompany    @relation("note_customer_company", fields: [customerCompanyId], references: [id], onDelete: Cascade)
 
   authorId      String        @map("author_id")
   author        User          @relation("note_author", fields: [authorId], references: [id])
@@ -589,7 +594,6 @@ model CustomerNote {
   booking       Booking?      @relation("note_booking", fields: [bookingId], references: [id])
   
   createdAt     DateTime      @default(now())   @map("created_at")
-  updatedAt     DateTime      @updatedAt        @map("updated_at")
 
   @@map("customer_note")
 }

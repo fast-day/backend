@@ -5,7 +5,6 @@ import {
   buildPaginatedResponse,
   getPaginationParams,
 } from "src/shared/common/pagination/pagination";
-import { CustomerCreateDocumentDto } from "./dto/customer-create-document.dto";
 import { buildFileUrl } from "src/shared/utils/build-url";
 import { getFullName } from "src/shared/utils/get-full-name.util";
 import { CustomerUpdateDocumentDto } from "./dto/customer-update-document.dto";
@@ -22,7 +21,7 @@ export class CustomerDocumentsService {
   ) {
     const customer = await this.prismaService.customerCompany.findUnique({
       where: { id: customerId, companyId },
-      select: { customerId: true },
+      select: { id: true },
     });
 
     if (!customer)
@@ -40,7 +39,7 @@ export class CustomerDocumentsService {
     const { page, limit, skip } = getPaginationParams(pagination);
 
     const where = {
-      customerId: customer.customerId,
+      customerCompanyId: customerId,
       authorId,
       ...(search && { name: search }),
     };
@@ -52,7 +51,6 @@ export class CustomerDocumentsService {
           id: true,
           name: true,
           tag: true,
-          content: true,
           isPinned: true,
           isArchived: true,
           isLocked: true,
@@ -67,7 +65,6 @@ export class CustomerDocumentsService {
     const data = documents.map((doc) => ({
       id: doc.id,
       name: doc.name,
-      content: doc.content,
       is_pinned: doc.isPinned,
       is_archived: doc.isArchived,
       is_locked: doc.isLocked,
@@ -80,15 +77,10 @@ export class CustomerDocumentsService {
     return buildPaginatedResponse(data, total, page, limit);
   }
 
-  async create(
-    dto: CustomerCreateDocumentDto,
-    customerId: string,
-    authorId: string,
-    bookingId?: string,
-  ) {
+  async create(customerId: string, authorId: string, bookingId?: string) {
     const customer = await this.prismaService.customerCompany.findUnique({
       where: { id: customerId },
-      select: { customerId: true },
+      select: { id: true },
     });
 
     if (!customer)
@@ -104,8 +96,7 @@ export class CustomerDocumentsService {
 
     const docs = await this.prismaService.customerNote.create({
       data: {
-        name: dto.name,
-        customerId: customer.customerId,
+        customerCompanyId: customerId,
         authorId,
         bookingId,
       },
@@ -113,7 +104,6 @@ export class CustomerDocumentsService {
         id: true,
         name: true,
         tag: true,
-        content: true,
         isPinned: true,
         isArchived: true,
         isLocked: true,
@@ -124,7 +114,6 @@ export class CustomerDocumentsService {
     return {
       id: docs.id,
       name: docs.name,
-      content: docs.content,
       is_pinned: docs.isPinned,
       is_archived: docs.isArchived,
       is_locked: docs.isLocked,
@@ -138,7 +127,7 @@ export class CustomerDocumentsService {
   async getById(customerId: string, authorId: string, documentId: string) {
     const customer = await this.prismaService.customerCompany.findUnique({
       where: { id: customerId },
-      select: { customerId: true },
+      select: { id: true },
     });
 
     if (!customer)
@@ -153,7 +142,7 @@ export class CustomerDocumentsService {
       );
 
     const docs = await this.prismaService.customerNote.findUnique({
-      where: { id: documentId, customerId: customer.customerId, authorId },
+      where: { id: documentId, customerCompanyId: customerId, authorId },
       select: {
         id: true,
         name: true,
@@ -163,14 +152,21 @@ export class CustomerDocumentsService {
         isArchived: true,
         isLocked: true,
         createdAt: true,
-        customer: {
+        customerCompany: {
           select: {
-            firstName: true,
-            lastName: true,
-            phone: true,
-            email: true,
-            avatar: true,
-            birthday: true,
+            id: true,
+            isBanned: true,
+            customer: {
+              select: {
+                id: true,
+                firstName: true,
+                lastName: true,
+                phone: true,
+                email: true,
+                avatar: true,
+                birthday: true,
+              },
+            },
           },
         },
       },
@@ -199,13 +195,21 @@ export class CustomerDocumentsService {
         time: docs.createdAt.toISOString().split("T")[1].slice(0, 5),
       },
       customer: {
-        first_name: docs.customer.firstName,
-        last_name: docs.customer.lastName,
-        full_name: getFullName(docs.customer.firstName, docs.customer.lastName),
-        email: docs.customer.email,
-        phone: docs.customer.phone,
-        birthday: docs.customer.birthday,
-        avatar: buildFileUrl(docs.customer.avatar),
+        id: docs.customerCompany.id,
+        is_banned: docs.customerCompany.isBanned,
+        profile: {
+          profile_id: docs.customerCompany.customer.id,
+          first_name: docs.customerCompany.customer.firstName,
+          last_name: docs.customerCompany.customer.lastName,
+          full_name: getFullName(
+            docs.customerCompany.customer.firstName,
+            docs.customerCompany.customer.lastName,
+          ),
+          email: docs.customerCompany.customer.email,
+          phone: docs.customerCompany.customer.phone,
+          birthday: docs.customerCompany.customer.birthday,
+          avatar: buildFileUrl(docs.customerCompany.customer.avatar),
+        },
       },
     };
   }
@@ -218,7 +222,7 @@ export class CustomerDocumentsService {
   ) {
     const customer = await this.prismaService.customerCompany.findUnique({
       where: { id: customerId },
-      select: { customerId: true },
+      select: { id: true },
     });
 
     if (!customer)
@@ -233,7 +237,7 @@ export class CustomerDocumentsService {
       );
 
     const docs = await this.prismaService.customerNote.findUnique({
-      where: { id: documentId, customerId: customer.customerId, authorId },
+      where: { id: documentId, customerCompanyId: customerId, authorId },
       select: { id: true },
     });
 
@@ -249,7 +253,7 @@ export class CustomerDocumentsService {
       );
 
     const newDocs = await this.prismaService.customerNote.update({
-      where: { id: documentId, customerId: customer.customerId, authorId },
+      where: { id: documentId, customerCompanyId: customerId, authorId },
       data: {
         name: dto.name,
         content: dto.content,

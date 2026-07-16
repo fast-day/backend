@@ -80,6 +80,8 @@ const employeePermissions = [
 
   "employees:read",
 
+  "company-customer:read",
+
   "booking:create",
   "bookings:read",
   "booking-detail:read",

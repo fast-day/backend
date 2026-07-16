@@ -364,7 +364,11 @@ export class CustomersService {
   /**
     ===== ПОЛУЧИТЬ ДЕТАЛЬНУЮ ИНФОРМАЦИЮ О КЛИЕНТЕ =====
   **/
-  async getCustomerDetailForLocation(customerId: string, companyId: string) {
+  async getCustomerDetailForLocation(
+    customerId: string,
+    companyId: string,
+    userId: string,
+  ) {
     const customer = await this.prismaService.customerCompany.findUnique({
       where: { id: customerId, companyId },
       select: {
@@ -387,6 +391,13 @@ export class CustomersService {
             },
           },
         },
+        _count: {
+          select: {
+            documents: {
+              where: { customerCompanyId: customerId, authorId: userId },
+            },
+          },
+        },
       },
     });
 
@@ -406,6 +417,7 @@ export class CustomersService {
       note: customer.note,
       is_banned: customer.isBanned,
       booking_count: customer.customer._count.bookings,
+      documents_count: customer._count.documents,
       profile: {
         id: customer.customer.id,
         full_name: getFullName(
