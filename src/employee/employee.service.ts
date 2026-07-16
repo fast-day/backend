@@ -99,6 +99,7 @@ export class EmployeeService {
     const { token } = dto;
     const isExist = await this.prismaService.invite.findFirst({
       where: { token: token },
+      select: { expiresAt: true },
     });
 
     if (!isExist || isExist.expiresAt < new Date())

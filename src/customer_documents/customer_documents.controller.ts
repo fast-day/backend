@@ -12,12 +12,11 @@ import {
   UseGuards,
 } from "@nestjs/common";
 import { CustomerDocumentsService } from "./customer_documents.service";
-import { ApiBody, ApiOperation, ApiResponse, ApiTags } from "@nestjs/swagger";
+import { ApiOperation, ApiResponse, ApiTags } from "@nestjs/swagger";
 import { GetCustomerDocumentsQueryDto } from "./dto/get-customer-documents-query.dto";
 import { AuthGuard } from "src/auth/guard/auth.guard";
 import { CompanyGuard } from "src/access/guard/company.guard";
 import { Authorized } from "src/auth/decorators/authorized.decorator";
-import { CustomerCreateDocumentDto } from "./dto/customer-create-document.dto";
 import { CustomerUpdateDocumentDto } from "./dto/customer-update-document.dto";
 
 @ApiTags("Документы клиента")
@@ -31,7 +30,6 @@ export class CustomerDocumentsController {
     ===== СОЗДАНИЕ ДОКУМЕНТА =====
   */
   @ApiOperation({ summary: "Создание документа" })
-  @ApiBody({ type: CustomerCreateDocumentDto })
   @ApiResponse({
     status: HttpStatus.OK,
     description: "success",
@@ -42,9 +40,8 @@ export class CustomerDocumentsController {
   create(
     @Param("customer_id") customerId: string,
     @Authorized("id") userId: string,
-    @Body() dto: CustomerCreateDocumentDto,
   ) {
-    return this.customerDocumentsService.create(dto, customerId, userId);
+    return this.customerDocumentsService.create(customerId, userId);
   }
 
   /*

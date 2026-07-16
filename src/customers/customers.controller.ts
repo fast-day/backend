@@ -38,6 +38,7 @@ import { AuthorizedCustomer } from "./decorators/authorized.decorator";
 import { CustomerMeDto } from "./dto/customer.dto";
 import { LocationGuard } from "src/access/guard/location.guard";
 import { GetCustomersDto } from "./dto/get-customers.dto";
+import { Authorized } from "src/auth/decorators/authorized.decorator";
 
 @ApiTags("Клиенты")
 @Controller()
@@ -181,13 +182,14 @@ export class CustomersController {
   @HttpCode(HttpStatus.OK)
   getCustomerDetailForLocation(
     @Param("customer_id") customerId: string,
-
+    @Authorized("id") userId: string,
     @Req() req,
   ) {
     const companyId = req.user.companyId;
     return this.customersService.getCustomerDetailForLocation(
       customerId,
       companyId,
+      userId,
     );
   }
 
