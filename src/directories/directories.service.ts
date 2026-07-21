@@ -309,12 +309,12 @@ export class DirectoriesService {
       where: {
         userId,
         locationId,
-        schedules: { some: { date } },
+        schedules: { some: { date: new Date(date) } },
       },
       select: {
         id: true,
         schedules: {
-          where: { date },
+          where: { date: new Date(date) },
           select: {
             id: true,
             date: true,
@@ -338,7 +338,7 @@ export class DirectoriesService {
           meta: {
             user_id: userId,
             location_id: locationId,
-            date: date,
+            date: new Date(date),
           },
         },
         HttpStatus.NOT_FOUND,
@@ -347,7 +347,7 @@ export class DirectoriesService {
     const bookings = await this.PrismaService.booking.findMany({
       where: {
         employeeId: userId,
-        date: date,
+        date: new Date(date),
         status: { not: "cancelled" },
       },
       select: {
