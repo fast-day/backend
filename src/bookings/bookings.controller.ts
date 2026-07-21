@@ -34,7 +34,7 @@ import { BookingUpdateDto } from "./dto/booking-update.dto";
 import { AuthCustomerGuard } from "src/customers/guard/auth.guard";
 import { AuthorizedCustomer } from "src/customers/decorators/authorized.decorator";
 import { ICustomer } from "src/customers/types/customer.type";
-import { BookingCreateCustomerDto } from "./dto/booking-create-customer.dto";
+import { BookingCreateCustomerOldDto } from "./dto/booking-create-customer.dto";
 import {
   BookingListResponseDto,
   BookingResponseDto,
@@ -324,7 +324,7 @@ export class BookingsController {
     description: "Позволяет авторизованному клиенту создать бронирование",
   })
   @ApiBody({
-    type: BookingCreateCustomerDto,
+    type: BookingCreateCustomerOldDto,
   })
   @ApiResponse({
     status: HttpStatus.CREATED,
@@ -341,7 +341,7 @@ export class BookingsController {
   @UseGuards(AuthCustomerGuard)
   // @Scopes("bookings-client-me:create")
   createCustomerBooking(
-    @Body() dto: BookingCreateCustomerDto,
+    @Body() dto: BookingCreateCustomerOldDto,
     @AuthorizedCustomer() customer: ICustomer,
   ) {
     return this.bookingsService.createCustomerBooking(dto, customer.id);

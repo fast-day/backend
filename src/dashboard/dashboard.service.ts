@@ -98,12 +98,13 @@ export class DashboardService {
         ...bookingFilter,
         orderId: { not: null },
       },
-      select: { orderId: true, date: true },
+      select: { orderId: true },
       distinct: ["orderId"],
     });
 
-    const filtered = bookings.filter((b) =>
-      this.isDateInRange(b.date ?? new Date(), dateStart, dateEnd),
+    const filtered = bookings.filter((_b) =>
+      // this.isDateInRange(b.date ?? new Date(), dateStart, dateEnd),
+      this.isDateInRange(new Date(), dateStart, dateEnd),
     );
     const orderIds = filtered.map((b) => b.orderId).filter(Boolean) as string[];
 
@@ -159,7 +160,7 @@ export class DashboardService {
         where: {
           companyId,
           locationId,
-          date: { gte: dateStartStr, lte: dateEndStr },
+          // date: { gte: dateStartStr, lte: dateEndStr },
         },
         select: { customerId: true },
         distinct: ["customerId"],

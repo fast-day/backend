@@ -3,7 +3,7 @@ import { IsEnum, IsOptional, IsString, IsUUID } from "class-validator";
 import { BookingBaseDto } from "./booking-base.dto";
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 
-export class BookingCreateCustomerDto extends BookingBaseDto {
+export class BookingCreateCustomerOldDto extends BookingBaseDto {
   @ApiProperty({
     example: "x5-retail-group",
     description: "Название компании (slug)",

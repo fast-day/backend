@@ -350,11 +350,11 @@ export class DirectoriesService {
         date: new Date(date),
         status: { not: "cancelled" },
       },
-      select: {
-        date: true,
-        startTime: true,
-        endTime: true,
-      },
+      // select: {
+      //   date: true,
+      //   startTime: true,
+      //   endTime: true,
+      // },
     });
 
     function timeToMinutes(time: string) {
@@ -380,8 +380,11 @@ export class DirectoriesService {
         /*
           !!!!! ПОДПРАВИТЬ ДАННЫЕ !!!!!
         */
-        const bookingStart = timeToMinutes(booking.startTime ?? "10:00");
-        const bookingEnd = timeToMinutes(booking.endTime ?? "12:00");
+        // const bookingStart = timeToMinutes(booking.startTime ?? "10:00");
+        const bookingStart = timeToMinutes("10:00");
+
+        // const bookingEnd = timeToMinutes(booking.endTime ?? "12:00");
+        const bookingEnd = timeToMinutes("12:00");
 
         console.log("bookingStart", bookingStart, "bookingEnd", bookingEnd);
 

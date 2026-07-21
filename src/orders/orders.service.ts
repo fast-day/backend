@@ -190,9 +190,34 @@ export class OrdersService {
             id: true,
             status: true,
             tag: true,
-            date: true,
-            startTime: true,
-            endTime: true,
+            services: {
+              select: {
+                id: true,
+                price: true,
+                startTime: true,
+                endTime: true,
+                duration: true,
+                date: true,
+                service: {
+                  select: {
+                    id: true,
+                    name: true,
+                    avatar: true,
+                    mark: true,
+                    price: { select: { price: true, costPrice: true } },
+                    duration: true,
+                  },
+                },
+                employee: {
+                  select: {
+                    id: true,
+                    firstName: true,
+                    lastName: true,
+                    avatar: true,
+                  },
+                },
+              },
+            },
           }
         }
       }
@@ -213,8 +238,7 @@ export class OrdersService {
         status: booking.status,
         tag: booking.tag,
         // date: booking.date.toISOString().split("T")[0],
-        start_time: booking.startTime,
-        end_time: booking.endTime
+        new_data: booking.services,
       }))
     }));
   }
@@ -236,44 +260,34 @@ export class OrdersService {
           select: {
             id: true,
             status: true,
-            startTime: true,
-            endTime: true,
             tag: true,
-            date: true,
             comment: true,
-            employee: {
-              select: {
-                id: true,
-                firstName: true,
-                avatar: true,
-                email: true,
-                lastName: true,
-                phone: true,
-              }
-            },
             services: {
               select: {
                 id: true,
                 price: true,
-                count: true,
+                startTime: true,
+                endTime: true,
                 duration: true,
+                date: true,
                 service: {
                   select: {
                     id: true,
                     name: true,
-                    category: true,
-                    price: {
-                      select: {
-                        price: true,
-                        costPrice: true,
-                      },
-                    },
-                    duration: true,
-                    mark: true,
-                    type: true,
                     avatar: true,
-                  }
-                }
+                    mark: true,
+                    price: { select: { price: true, costPrice: true } },
+                    duration: true,
+                  },
+                },
+                employee: {
+                  select: {
+                    id: true,
+                    firstName: true,
+                    lastName: true,
+                    avatar: true,
+                  },
+                },
               },
             },
             customer: {
@@ -332,36 +346,33 @@ export class OrdersService {
         status: book.status,
         tag: book.tag,
         // date: book.date.toISOString().split("T")[0],
-        time: {
-          start: book.startTime,
-          end: book.endTime,
-        },
         comment: book.comment,
-        employee: {
-          id: book.employee.id,
-          first_name: book.employee.firstName,
-          last_name: book.employee.lastName,
-          full_name: getFullName(book.employee.firstName, book.employee.lastName),
-          email: book.employee.email,
-          phone: book.employee.phone,
-          avatar: buildFileUrl(book.employee.avatar),
-        },
-        services: book.services.map((service) => ({
-          booking_service_id: service.id,
-          booking_service_price: service.price,
-          booking_service_count: service.count,
-          booking_service_duration: service.duration,
-          service: {
-            id: service.service.id,
-            name: service.service.name,
-            duration: service.service.duration,
-            avatar: buildFileUrl(service.service.avatar),
-            prices: {
-              price: service.service.price?.price,
-              cost_price: service.service.price?.costPrice,
-            },
-          },
-        })),
+        new_data: book.services,
+        // employee: {
+        //   id: book.employee.id,
+        //   first_name: book.employee.firstName,
+        //   last_name: book.employee.lastName,
+        //   full_name: getFullName(book.employee.firstName, book.employee.lastName),
+        //   email: book.employee.email,
+        //   phone: book.employee.phone,
+        //   avatar: buildFileUrl(book.employee.avatar),
+        // },
+        // services: book.services.map((service) => ({
+        //   booking_service_id: service.id,
+        //   booking_service_price: service.price,
+        //   booking_service_count: service.count,
+        //   booking_service_duration: service.duration,
+        //   service: {
+        //     id: service.service.id,
+        //     name: service.service.name,
+        //     duration: service.service.duration,
+        //     avatar: buildFileUrl(service.service.avatar),
+        //     prices: {
+        //       price: service.service.price?.price,
+        //       cost_price: service.service.price?.costPrice,
+        //     },
+        //   },
+        // })),
         customer: {
           id: book.customer.id,
           profile_id: customerCompany?.id,
