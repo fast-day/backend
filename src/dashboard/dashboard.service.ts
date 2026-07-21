@@ -103,7 +103,7 @@ export class DashboardService {
     });
 
     const filtered = bookings.filter((b) =>
-      this.isDateInRange(b.date, dateStart, dateEnd),
+      this.isDateInRange(b.date ?? new Date(), dateStart, dateEnd),
     );
     const orderIds = filtered.map((b) => b.orderId).filter(Boolean) as string[];
 
@@ -258,8 +258,12 @@ export class DashboardService {
       },
     });
 
+    /*
+    
+      !!!!!! ПОДРАВИТЬ ДАННЫЕ !!!!!!    
+    */
     return bookings.map((b) => ({
-      date: `${b.date.getFullYear()}-${String(b.date.getMonth() + 1).padStart(2, "0")}-${String(b.date.getDate()).padStart(2, "0")} ${b.startTime}`,
+      date: `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, "0")}-${String(new Date().getDate()).padStart(2, "0")} ${b.startTime}`,
       profit: b.order?.total ?? b.order?.subtotal,
     }));
   }

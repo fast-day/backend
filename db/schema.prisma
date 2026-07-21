@@ -225,10 +225,16 @@ model User {
 
   locations     UserLocation[] @relation("user_location")
   services      UserService[]  @relation("user_service")
+
+  // В БУДУЩЕМ УБРАТЬ
   bookings      Booking[]      @relation("booking_employee")
+  
   settings      Settings?      @relation("user_setting")
   onboardingProgress           OnboardingProgress?      @relation("user_onboarding_progress")
   notes         CustomerNote[] @relation("note_author")
+  
+  
+  booking_services             BookingService[]        @relation("booking_employee")
 
   sessions      Session[]     @relation("user_session")
 
@@ -736,9 +742,12 @@ model Booking {
 
   publicCode    Int           @unique           @default(autoincrement())       @map("public_code")
 
-  startTime     String        @map("start_time")
-  endTime       String        @map("end_time")
-  date          DateTime      @db.Date
+  // УБРААТЬ start_time, end_time & date
+  startTime     String?       @map("start_time")
+  endTime       String?       @map("end_time")
+  date          DateTime?     @db.Date
+  //
+
   comment       String?
   status        BookingStatus @default(confirmed)
   tag           String?       @unique
@@ -757,6 +766,7 @@ model Booking {
   services      BookingService[]                @relation("booking_services")
   notes         CustomerNote[]                  @relation("note_booking")
 
+  // УБИРАЕМ СОТРУДНИКА - ПЕРЕНОС В BOOKING_SERVICE
   employee      User          @relation("booking_employee", fields: [employeeId], references: [id])
   employeeId    String
 
@@ -781,6 +791,10 @@ model BookingService {
   price         Int?
   duration      Int?
 
+  startTime     String        @map("start_time")
+  endTime       String        @map("end_time")
+  date          DateTime      @db.Date
+
   count         Int           @default(1)
 
   booking       Booking       @relation("booking_services", fields: [bookingId], references: [id], onDelete: Cascade)
@@ -788,6 +802,9 @@ model BookingService {
 
   service       Service       @relation("booking_service", fields: [serviceId], references: [id])
   serviceId     String
+
+  employee      User          @relation("booking_employee", fields: [employeeId], references: [id], onDelete: Cascade)
+  employeeId    String        @map("employee_id")
 
   createdAt     DateTime      @default(now())   @map("created_at")
 

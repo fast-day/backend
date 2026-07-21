@@ -377,8 +377,11 @@ export class DirectoriesService {
 
     function hasOverlap(start: number, end: number) {
       return bookings.some((booking) => {
-        const bookingStart = timeToMinutes(booking.startTime);
-        const bookingEnd = timeToMinutes(booking.endTime);
+        /*
+          !!!!! ПОДПРАВИТЬ ДАННЫЕ !!!!!
+        */
+        const bookingStart = timeToMinutes(booking.startTime ?? "10:00");
+        const bookingEnd = timeToMinutes(booking.endTime ?? "12:00");
 
         console.log("bookingStart", bookingStart, "bookingEnd", bookingEnd);
 

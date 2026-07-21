@@ -20,6 +20,7 @@ import { MailService } from "src/mail/mail.service";
 import { generateOrderTag } from "src/orders/utils/generate-order-tag";
 import { getFullName } from "src/shared/utils/get-full-name.util";
 import { BookingDtoService } from "./dto/booking-base.dto";
+import { calcEndTime } from "src/shared/utils/calc-end-time.util";
 
 @Injectable()
 export class BookingsService {
@@ -266,77 +267,71 @@ export class BookingsService {
 
   async create(dto: BookingCreateDto, company_id: string) {
     return this.prismaService.$transaction(async (t) => {
-      await this.validateLocation(dto.location_id, dto.services);
-      const locationId = await this.validateEmployeeLocation(
-        dto.employee_id,
-        dto.location_id,
-      );
-      await this.validateEmployeeService(dto.employee_id, dto.services);
-      const customerId = await this.validateCustomer(
-        dto.customer_id,
-        company_id,
-      );
-      await this.validateService(dto.services, company_id);
-      await this.validateCustomerWorked(
-        new Date(dto.date),
-        locationId,
-        dto.start_time,
-        dto.end_time,
-      );
-      await this.validateOverlapping(
-        dto.employee_id,
-        new Date(dto.date),
-        dto.end_time,
-        dto.start_time,
-      );
-      await this.validateCustomerOverlapping(
-        customerId,
-        new Date(dto.date),
-        dto.start_time,
-        dto.end_time,
-      );
+      //   await this.validateLocation(dto.location_id, dto.services);
+      //   const locationId = await this.validateEmployeeLocation(
+      //     dto.employee_id,
+      //     dto.location_id,
+      //   );
+      //   await this.validateEmployeeService(dto.employee_id, dto.services);
+      //   const customerId = await this.validateCustomer(
+      //     dto.customer_id,
+      //     company_id,
+      //   );
+      //   await this.validateService(dto.services, company_id);
+      //   await this.validateCustomerWorked(
+      //     new Date(dto.date),
+      //     locationId,
+      //     dto.start_time,
+      //     dto.end_time,
+      //   );
+      //   await this.validateOverlapping(
+      //     dto.employee_id,
+      //     new Date(dto.date),
+      //     dto.end_time,
+      //     dto.start_time,
+      //   );
+      //   await this.validateCustomerOverlapping(
+      //     customerId,
+      //     new Date(dto.date),
+      //     dto.start_time,
+      //     dto.end_time,
+      //   );
 
       const booking = await t.booking.create({
         data: {
           tag: generateBookingTag(),
-          date: new Date(dto.date),
-          startTime: dto.start_time,
-          endTime: dto.end_time,
-          comment: dto.comment ?? null,
+          comment: dto.comment,
           status: dto.status ?? "pending",
-          employeeId: dto.employee_id,
-          customerId: customerId,
+          type: dto.type,
+          locationId: dto.location_id,
+          companyId: company_id,
+
+          /*
+            !!!!! УДАЛИТЬ EmployeeID CustomerId !!!!!
+          */
+          employeeId: "133375e2-65a7-42f4-9818-d8b81b12c486",
+          customerId: "4c1d3ad7-dbe0-4e47-a2cc-fef25291c72e",
+
           services: {
             createMany: {
               data: dto.services.map((service) => ({
                 serviceId: service.service_id,
                 price: service.price,
                 count: service.count,
+                date: new Date(service.date),
+                startTime: service.start_time,
+                endTime: calcEndTime(service.start_time, service.duration),
                 duration: service.duration,
+                employeeId: service.users[0].id,
               })),
             },
           },
-          locationId: dto.location_id,
-          companyId: company_id,
         },
         select: {
           id: true,
           tag: true,
           status: true,
-          date: true,
-          startTime: true,
-          endTime: true,
           comment: true,
-          employee: {
-            select: {
-              id: true,
-              firstName: true,
-              lastName: true,
-              email: true,
-              phone: true,
-              avatar: true,
-            },
-          },
           customer: {
             select: {
               id: true,
@@ -350,8 +345,10 @@ export class BookingsService {
             select: {
               id: true,
               price: true,
-              count: true,
+              startTime: true,
+              endTime: true,
               duration: true,
+              date: true,
               service: {
                 select: {
                   id: true,
@@ -362,74 +359,152 @@ export class BookingsService {
                   duration: true,
                 },
               },
+              employee: {
+                select: {
+                  id: true,
+                  firstName: true,
+                  lastName: true,
+                  avatar: true,
+                },
+              },
             },
           },
         },
       });
 
-      const res = {
-        id: booking.id,
-        status: booking.status,
-        tag: booking.tag,
-        start_time: booking.startTime,
-        end_time: booking.endTime,
-        date: booking.date.toISOString().split("T")[0],
-        comment: booking.comment,
-        customer: {
-          id: booking.customer.id,
-          phone: booking.customer.phone,
-          full_name: getFullName(
-            booking.customer.firstName,
-            booking.customer.lastName,
-          ),
-          first_name: booking.customer.firstName,
-          last_name: booking.customer.lastName,
-          avatar: buildFileUrl(booking.customer.avatar),
-        },
-        employee: {
-          id: booking.employee.id,
-          first_name: booking.employee.firstName,
-          last_name: booking.employee.lastName,
-          full_name: getFullName(
-            booking.employee.firstName,
-            booking.employee.lastName,
-          ),
-          avatar: buildFileUrl(booking.employee.avatar),
-          email: booking.employee.email,
-          phone: booking.employee.phone,
-        },
-        services: booking.services.map((service) => ({
-          booking_service_id: service.id,
-          booking_service_price: service.price,
-          booking_service_count: service.count,
-          booking_service_duration: service.duration,
-          service: {
-            id: service.service.id,
-            name: service.service.name,
-            duration: service.service.duration,
-            avatar: buildFileUrl(service.service.avatar),
-            prices: {
-              price: service.service.price?.price,
-              cost_price: service.service.price?.costPrice,
-            },
-          },
-        })),
-        /*
-          !!=====!! СТАРЫЙ ВЫВОД УСЛУГ !!=====!!
-        */
-        // service: {
-        //   id: booking.service.id,
-        //   name: booking.service.name,
-        //   duration: booking.service.duration,
-        //   avatar: buildFileUrl(booking.service.avatar),
-        //   prices: {
-        //     price: booking.service.price?.price,
-        //     cost_price: booking.service.price?.costPrice,
-        //   },
-        // },
-      };
-
-      return res;
+      return booking;
+      //   const booking = await t.booking.create({
+      //     data: {
+      //       tag: generateBookingTag(),
+      //       date: new Date(dto.date),
+      //       startTime: dto.start_time,
+      //       endTime: dto.end_time,
+      //       comment: dto.comment ?? null,
+      //       status: dto.status ?? "pending",
+      //       employeeId: dto.employee_id,
+      //       customerId: customerId,
+      //       services: {
+      //         createMany: {
+      //           data: dto.services.map((service) => ({
+      //             serviceId: service.service_id,
+      //             price: service.price,
+      //             count: service.count,
+      //             duration: service.duration,
+      //           })),
+      //         },
+      //       },
+      //       locationId: dto.location_id,
+      //       companyId: company_id,
+      //     },
+      //     select: {
+      //       id: true,
+      //       tag: true,
+      //       status: true,
+      //       date: true,
+      //       startTime: true,
+      //       endTime: true,
+      //       comment: true,
+      //       employee: {
+      //         select: {
+      //           id: true,
+      //           firstName: true,
+      //           lastName: true,
+      //           email: true,
+      //           phone: true,
+      //           avatar: true,
+      //         },
+      //       },
+      //       customer: {
+      //         select: {
+      //           id: true,
+      //           phone: true,
+      //           firstName: true,
+      //           lastName: true,
+      //           avatar: true,
+      //         },
+      //       },
+      //       services: {
+      //         select: {
+      //           id: true,
+      //           price: true,
+      //           count: true,
+      //           duration: true,
+      //           service: {
+      //             select: {
+      //               id: true,
+      //               name: true,
+      //               avatar: true,
+      //               mark: true,
+      //               price: { select: { price: true, costPrice: true } },
+      //               duration: true,
+      //             },
+      //           },
+      //         },
+      //       },
+      //     },
+      //   });
+      //   const res = {
+      //     id: booking.id,
+      //     status: booking.status,
+      //     tag: booking.tag,
+      //     start_time: booking.startTime,
+      //     end_time: booking.endTime,
+      //     date: booking.date.toISOString().split("T")[0],
+      //     comment: booking.comment,
+      //     customer: {
+      //       id: booking.customer.id,
+      //       phone: booking.customer.phone,
+      //       full_name: getFullName(
+      //         booking.customer.firstName,
+      //         booking.customer.lastName,
+      //       ),
+      //       first_name: booking.customer.firstName,
+      //       last_name: booking.customer.lastName,
+      //       avatar: buildFileUrl(booking.customer.avatar),
+      //     },
+      //     employee: {
+      //       id: booking.employee.id,
+      //       first_name: booking.employee.firstName,
+      //       last_name: booking.employee.lastName,
+      //       full_name: getFullName(
+      //         booking.employee.firstName,
+      //         booking.employee.lastName,
+      //       ),
+      //       avatar: buildFileUrl(booking.employee.avatar),
+      //       email: booking.employee.email,
+      //       phone: booking.employee.phone,
+      //     },
+      //     services: booking.services.map((service) => ({
+      //       booking_service_id: service.id,
+      //       booking_service_price: service.price,
+      //       booking_service_count: service.count,
+      //       booking_service_duration: service.duration,
+      //       service: {
+      //         id: service.service.id,
+      //         name: service.service.name,
+      //         duration: service.service.duration,
+      //         avatar: buildFileUrl(service.service.avatar),
+      //         prices: {
+      //           price: service.service.price?.price,
+      //           cost_price: service.service.price?.costPrice,
+      //         },
+      //       },
+      //     })),
+      //     /*
+      //       !!=====!! СТАРЫЙ ВЫВОД УСЛУГ !!=====!!
+      //     */
+      //     // service: {
+      //     //   id: booking.service.id,
+      //     //   name: booking.service.name,
+      //     //   duration: booking.service.duration,
+      //     //   avatar: buildFileUrl(booking.service.avatar),
+      //     //   prices: {
+      //     //     price: booking.service.price?.price,
+      //     //     cost_price: booking.service.price?.costPrice,
+      //     //   },
+      //     // },
+      //   };
+      //   return res;
     });
   }
 
@@ -588,7 +663,7 @@ export class BookingsService {
       tag: booking.tag,
       start_time: booking.startTime,
       end_time: booking.endTime,
-      date: booking.date.toISOString().split("T")[0],
+      // date: booking.date.toISOString().split("T")[0],
       comment: booking.comment,
       subtotal: booking.order?.subtotal,
       payment_method: booking.order?.paymentMethod,
@@ -763,7 +838,7 @@ export class BookingsService {
       status: booking.status,
       start_time: booking.startTime,
       end_time: booking.endTime,
-      date: booking.date.toISOString().split("T")[0],
+      // date: booking.date.toISOString().split("T")[0],
       comment: booking.comment,
       location: {
         id: booking.location.id,
@@ -924,7 +999,7 @@ export class BookingsService {
       tag: booking.tag,
       start_time: booking.startTime,
       end_time: booking.endTime,
-      date: booking.date.toISOString().split("T")[0],
+      // date: booking.date.toISOString().split("T")[0],
       comment: booking.comment,
       location: {
         id: booking.location.id,
@@ -1101,7 +1176,7 @@ export class BookingsService {
       tag: booking.tag,
       start_time: booking.startTime,
       end_time: booking.endTime,
-      date: booking.date.toISOString().split("T")[0],
+      // date: booking.date.toISOString().split("T")[0],
       comment: booking.comment,
       location: {
         id: booking.location.id,
@@ -1254,7 +1329,7 @@ export class BookingsService {
       tag: booking.tag,
       start_time: booking.startTime,
       end_time: booking.endTime,
-      date: booking.date.toISOString().split("T")[0],
+      // date: booking.date.toISOString().split("T")[0],
       employee: {
         id: booking.employee.id,
         first_name: booking.employee.firstName,
@@ -1310,110 +1385,99 @@ export class BookingsService {
     dto: BookingCreateCustomerDto,
     customerId: string,
   ) {
-    const company = await this.prismaService.company.findUnique({
-      where: { publicName: dto.company },
-      select: { id: true },
-    });
-
-    if (!company)
-      throw new HttpException(
-        {
-          status: HttpStatus.NOT_FOUND,
-          title: "Ошибка",
-          detail: "Компания не найдена.",
-          meta: { public_name: dto.company },
-        },
-        HttpStatus.NOT_FOUND,
-      );
-
-    const customer = await this.prismaService.customerAccount.findUnique({
-      where: { id: customerId },
-      select: { customerId: true },
-    });
-
-    if (!customer)
-      throw new HttpException(
-        {
-          status: HttpStatus.NOT_FOUND,
-          title: "Ошибка",
-          detail: "Клиент не найден.",
-          meta: { customer_id: customer },
-        },
-        HttpStatus.NOT_FOUND,
-      );
-
-    const createDto = {
-      start_time: dto.start_time,
-      end_time: dto.end_time,
-      date: dto.date,
-      comment: dto.comment,
-      location_id: dto.location_id,
-      services: dto.services,
-      employee_id: dto.employee_id,
-      customer_id: customer?.customerId,
-      status: dto.status,
-      payment_method: dto.payment_method,
-    } satisfies BookingCreateDto;
-
-    return this.prismaService.$transaction(async (t) => {
-      const booking = await this.create(createDto, company.id);
-
-      // const subtotal = booking.service.prices.price ?? 0;
-      const subtotal = booking.services.reduce(
-        (sum, s) => sum + Number(s.booking_service_price),
-        0,
-      );
-      const order = await t.order.create({
-        data: {
-          status: "open",
-          subtotal,
-          tag: generateOrderTag(),
-          companyId: company.id,
-          total: subtotal,
-          paymentMethod: dto.payment_method,
-          bookings: { connect: { id: booking.id } },
-        },
-        select: {
-          id: true,
-          tag: true,
-          paymentMethod: true,
-          status: true,
-          total: true,
-          subtotal: true,
-          comment: true,
-        },
-      });
-
-      await t.booking.update({
-        where: { id: booking.id },
-        data: { orderId: order.id, status: "new" },
-      });
-
-      await this.mailService.sendNewBookingNotify(booking.employee.email, {
-        ...booking,
-        date: new Date(booking.date),
-      });
-
-      return {
-        id: booking.id,
-        date: booking.date,
-        start_time: booking.start_time,
-        end_time: booking.end_time,
-        status: booking.status,
-        tag: booking.tag,
-        order: {
-          id: order.id,
-          tag: order.tag,
-          status: order.status,
-          payment_method: order.paymentMethod,
-          total: order.total,
-          subtotal: order.subtotal,
-        },
-      };
-    });
-
+    // const company = await this.prismaService.company.findUnique({
+    //   where: { publicName: dto.company },
+    //   select: { id: true },
+    // });
+    // if (!company)
+    //   throw new HttpException(
+    //     {
+    //       status: HttpStatus.NOT_FOUND,
+    //       title: "Ошибка",
+    //       detail: "Компания не найдена.",
+    //       meta: { public_name: dto.company },
+    //     },
+    //     HttpStatus.NOT_FOUND,
+    //   );
+    // const customer = await this.prismaService.customerAccount.findUnique({
+    //   where: { id: customerId },
+    //   select: { customerId: true },
+    // });
+    // if (!customer)
+    //   throw new HttpException(
+    //     {
+    //       status: HttpStatus.NOT_FOUND,
+    //       title: "Ошибка",
+    //       detail: "Клиент не найден.",
+    //       meta: { customer_id: customer },
+    //     },
+    //     HttpStatus.NOT_FOUND,
+    //   );
+    // const createDto = {
+    //   start_time: dto.start_time,
+    //   end_time: dto.end_time,
+    //   date: dto.date,
+    //   comment: dto.comment,
+    //   location_id: dto.location_id,
+    //   services: dto.services,
+    //   employee_id: dto.employee_id,
+    //   customer_id: customer?.customerId,
+    //   status: dto.status,
+    //   payment_method: dto.payment_method,
+    // } satisfies BookingCreateDto;
+    // return this.prismaService.$transaction(async (t) => {
+    //   const booking = await this.create(createDto, company.id);
+    //   // const subtotal = booking.service.prices.price ?? 0;
+    //   const subtotal = booking.services.reduce(
+    //     (sum, s) => sum + Number(s.booking_service_price),
+    //     0,
+    //   );
+    //   const order = await t.order.create({
+    //     data: {
+    //       status: "open",
+    //       subtotal,
+    //       tag: generateOrderTag(),
+    //       companyId: company.id,
+    //       total: subtotal,
+    //       paymentMethod: dto.payment_method,
+    //       bookings: { connect: { id: booking.id } },
+    //     },
+    //     select: {
+    //       id: true,
+    //       tag: true,
+    //       paymentMethod: true,
+    //       status: true,
+    //       total: true,
+    //       subtotal: true,
+    //       comment: true,
+    //     },
+    //   });
+    //   await t.booking.update({
+    //     where: { id: booking.id },
+    //     data: { orderId: order.id, status: "new" },
+    //   });
+    //   await this.mailService.sendNewBookingNotify(booking.employee.email, {
+    //     ...booking,
+    //     date: new Date(booking.date),
+    //   });
+    //   return {
+    //     id: booking.id,
+    //     date: booking.date,
+    //     start_time: booking.start_time,
+    //     end_time: booking.end_time,
+    //     status: booking.status,
+    //     tag: booking.tag,
+    //     order: {
+    //       id: order.id,
+    //       tag: order.tag,
+    //       status: order.status,
+    //       payment_method: order.paymentMethod,
+    //       total: order.total,
+    //       subtotal: order.subtotal,
+    //     },
+    //   };
+    // });
     // await this.orderService.create();
-
     // return res;
   }
 
