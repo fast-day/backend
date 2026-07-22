@@ -37,7 +37,6 @@ export class OrdersService {
       
       const subtotal = bookings.reduce(
         (sum, booking) =>
-          // eslint-disable-next-line @typescript-eslint/no-unsafe-call
           sum + booking.services.reduce((s, service) => s + Number(service.unitPrice), 0),
         0,
       );

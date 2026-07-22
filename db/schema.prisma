@@ -807,7 +807,6 @@ model BookingService {
 
   createdAt     DateTime      @default(now())   @map("created_at")
 
-  @@unique([bookingId, serviceId])
   @@index([serviceId, employeeId])
   @@map("booking_services")
 }

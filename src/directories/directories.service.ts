@@ -123,6 +123,17 @@ export class DirectoriesService {
             phone: true,
             email: true,
             avatar: true,
+            bookings: {
+              select: {
+                order: {
+                  where: { status: "paid" },
+                  select: {
+                    total: true,
+                    subtotal: true,
+                  },
+                },
+              },
+            },
             _count: {
               select: {
                 bookings: { where: { companyId } },
@@ -135,18 +146,25 @@ export class DirectoriesService {
 
     return customers.map((customer) => ({
       id: customer.id,
-      profile_id: customer.customer.id,
-      first_name: customer.customer.firstName,
-      last_name: customer.customer.lastName,
-      full_name: getFullName(
-        customer.customer.firstName,
-        customer.customer.lastName,
-      ),
-      birthday: customer.customer.birthday,
-      phone: customer.customer.phone,
-      email: customer.customer.email,
-      avatar: buildFileUrl(customer.customer.avatar),
+      customer_attributes: {
+        profile_id: customer.customer.id,
+        first_name: customer.customer.firstName,
+        last_name: customer.customer.lastName,
+        full_name: getFullName(
+          customer.customer.firstName,
+          customer.customer.lastName,
+        ),
+        birthday: customer.customer.birthday,
+        phone: customer.customer.phone,
+        email: customer.customer.email,
+        avatar: buildFileUrl(customer.customer.avatar),
+      },
+      visit_total: customer.customer.bookings.map((book) => book.order).length,
       bookings_count: customer.customer._count.bookings,
+      bookings_total: customer.customer.bookings.reduce(
+        (sum, booking) => sum + Number(booking.order?.total),
+        0,
+      ),
     }));
   }
 

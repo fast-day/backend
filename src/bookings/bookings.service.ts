@@ -26,7 +26,11 @@ import {
   calcEndTimeDate,
 } from "src/shared/utils/calc-end-time.util";
 import { BookingCreateCustomerOldDto } from "./dto/booking-create-customer.dto";
-import { combineDateAndTime } from "src/shared/utils/combine-date-and-time.util";
+import {
+  combineDateAndTime,
+  parseNaiveDateTime,
+} from "src/shared/utils/combine-date-and-time.util";
+import { buildEmployeeScopeFilter } from "src/shared/utils/build-employee-scope.util";
 
 @Injectable()
 export class BookingsService {
@@ -190,20 +194,12 @@ export class BookingsService {
     endTime: Date,
   ): Promise<void> {
     const dayStart = new Date(date);
-    dayStart.setHours(0, 0, 0, 0);
-
-    console.log({
-      dayStart,
-      dayStartISO: dayStart.toISOString(),
-      userLocationId,
-    });
+    dayStart.setUTCHours(0, 0, 0, 0);
 
     const schedule = await this.prismaService.schedule.findFirst({
       where: { date: dayStart, userLocationId },
       include: { intervals: true },
     });
-
-    console.log(schedule);
 
     if (!schedule) {
       throw new HttpException(
@@ -220,13 +216,6 @@ export class BookingsService {
     const isWorked = schedule.intervals.some((interval) => {
       const intervalStart = combineDateAndTime(dayStart, interval.start);
       const intervalEnd = combineDateAndTime(dayStart, interval.end);
-
-      console.log({
-        startTime,
-        endTime,
-        intervalStart,
-        intervalEnd,
-      });
       return intervalStart <= startTime && intervalEnd >= endTime;
     });
 
@@ -315,7 +304,7 @@ export class BookingsService {
           );
         }
 
-        const startTime = new Date(service.start_time);
+        const startTime = parseNaiveDateTime(service.start_time);
         const endTime = calcEndTimeDate(startTime, service.duration);
 
         return {
@@ -379,10 +368,13 @@ export class BookingsService {
             createMany: {
               data: dto.services.map((service) => ({
                 serviceId: service.service_id,
-                price: service.price,
+                unitPrice: service.price,
                 count: service.count,
-                startTime: service.start_time,
-                endTime: calcEndTime(service.start_time, service.duration),
+                startTime: parseNaiveDateTime(service.start_time),
+                endTime: calcEndTimeDate(
+                  parseNaiveDateTime(service.start_time),
+                  service.duration,
+                ),
                 duration: service.duration,
                 employeeId: service.users[0].id,
               })),
@@ -554,8 +546,9 @@ export class BookingsService {
       );
 
     const isOwner = user.role?.name === "owner";
+    const serviceWhere = buildEmployeeScopeFilter(isOwner, userId);
 
-    const where = {
+    const where: Prisma.BookingWhereInput = {
       locationId,
       ...(!isOwner && { employeeId: userId }),
       ...(status && { status }),
@@ -563,6 +556,7 @@ export class BookingsService {
       ...(tag && {
         tag: { contains: tag, mode: Prisma.QueryMode.insensitive },
       }),
+      ...(serviceWhere && serviceWhere),
       ...(customer && {
         customer: {
           OR: [
@@ -584,30 +578,6 @@ export class BookingsService {
           ],
         },
       }),
-      // ...(employee && {
-      //   employee: {
-      //     OR: [
-      //       {
-      //         firstName: {
-      //           contains: employee,
-      //           mode: Prisma.QueryMode.insensitive,
-      //         },
-      //       },
-      //       {
-      //         lastName: {
-      //           contains: employee,
-      //           mode: Prisma.QueryMode.insensitive,
-      //         },
-      //       },
-      //       { phoneNormalized: { contains: normalizePhone(employee) } },
-      //     ],
-      //   },
-      // }),
-      // ...(service && {
-      //   service: {
-      //     name: { contains: service, mode: Prisma.QueryMode.insensitive },
-      //   },
-      // }),
     };
 
     const orderBy: Prisma.BookingOrderByWithRelationInput =
@@ -643,6 +613,7 @@ export class BookingsService {
               startTime: true,
               endTime: true,
               duration: true,
+              count: true,
               service: {
                 select: {
                   id: true,
@@ -656,6 +627,7 @@ export class BookingsService {
               employee: {
                 select: {
                   id: true,
+                  phone: true,
                   firstName: true,
                   lastName: true,
                   avatar: true,
@@ -663,34 +635,6 @@ export class BookingsService {
               },
             },
           },
-          // employee: {
-          //   select: {
-          //     id: true,
-          //     phone: true,
-          //     firstName: true,
-          //     lastName: true,
-          //     position: true,
-          //     avatar: true,
-          //   },
-          // },
-          // services: {
-          //   select: {
-          //     id: true,
-          //     price: true,
-          //     count: true,
-          //     duration: true,
-          //     service: {
-          //       select: {
-          //         id: true,
-          //         name: true,
-          //         avatar: true,
-          //         mark: true,
-          //         price: { select: { price: true, costPrice: true } },
-          //         duration: true,
-          //       },
-          //     },
-          //   },
-          // },
           order: {
             select: {
               subtotal: true,
@@ -724,48 +668,37 @@ export class BookingsService {
       //   last_name: booking.customer.lastName,
       //   avatar: buildFileUrl(booking.customer.avatar),
       // },
-      // new: booking.services,
-      // employee: {
-      //   id: booking.employee.id,
-      //   full_name: getFullName(
-      //     booking.employee.firstName,
-      //     booking.employee.lastName,
-      //   ),
-      //   first_name: booking.employee.firstName,
-      //   last_name: booking.employee.lastName,
-      //   avatar: buildFileUrl(booking.employee.avatar),
-      //   phone: booking.employee.phone,
-      //   position: booking.employee.position,
-      // },
-      // services: booking.services.map((service) => ({
-      //   booking_service_id: service.id,
-      //   booking_service_price: service.price,
-      //   booking_service_count: service.count,
-      //   booking_service_duration: service.duration,
-      //   service: {
-      //     id: service.service.id,
-      //     name: service.service.name,
-      //     duration: service.service.duration,
-      //     avatar: buildFileUrl(service.service.avatar),
-      //     prices: {
-      //       price: service.service.price?.price,
-      //       cost_price: service.service.price?.costPrice,
-      //     },
-      //   },
-      // })),
-      /*
-          !!=====!! СТАРЫЙ ВЫВОД УСЛУГ !!=====!!
-        */
-      // service: {
-      //   id: booking.service.id,
-      //   name: booking.service.name,
-      //   duration: booking.service.duration,
-      //   avatar: buildFileUrl(booking.service.avatar),
-      //   prices: {
-      //     price: booking.service.price?.price,
-      //     cost_price: booking.service.price?.costPrice,
-      //   },
-      // },
+
+      booking_services: booking.services.map((service) => ({
+        booking_service_id: service.id,
+        booking_service_start_time: service.startTime,
+        booking_service_end_time: service.endTime,
+        booking_service_duration: service.duration,
+        booking_service_price: service.unitPrice,
+        booking_service_count: service.count,
+        service: {
+          service_id: service.service.id,
+          name: service.service.name,
+          mark: service.service.mark,
+          duration: service.service.duration,
+          avatar: buildFileUrl(service.service.avatar),
+          prices: {
+            price: service.service.price?.price,
+            cost_price: service.service.price?.costPrice,
+          },
+        },
+        user: {
+          user_id: service.employee.id,
+          first_name: service.employee.firstName,
+          last_name: service.employee.lastName,
+          full_name: getFullName(
+            service.employee.firstName,
+            service.employee.lastName,
+          ),
+          phone: service.employee.phone,
+          avatar: buildFileUrl(service.employee.avatar),
+        },
+      })),
     }));
 
     return buildPaginatedResponse(data, total, page, limit);
@@ -941,7 +874,7 @@ export class BookingsService {
 
   async details(bookingId: string, companyId: string) {
     const booking = await this.prismaService.booking.findUnique({
-      where: { id: bookingId },
+      where: { id: bookingId, companyId },
       select: {
         id: true,
         tag: true,
@@ -966,6 +899,7 @@ export class BookingsService {
             startTime: true,
             endTime: true,
             duration: true,
+            count: true,
             service: {
               select: {
                 id: true,
@@ -981,6 +915,7 @@ export class BookingsService {
                 id: true,
                 firstName: true,
                 lastName: true,
+                phone: true,
                 avatar: true,
               },
             },
@@ -1012,99 +947,84 @@ export class BookingsService {
         HttpStatus.NOT_FOUND,
       );
 
-    // const customerCompany = await this.prismaService.customerCompany.findUnique(
-    //   {
-    //     where: {
-    //       customerId_companyId: {
-    //         customerId: booking.customer.id,
-    //         companyId,
-    //       },
-    //     },
-    //     select: { id: true },
-    //   },
-    // );
+    const customerCompany = await this.prismaService.customerCompany.findUnique(
+      {
+        where: {
+          customerId_companyId: {
+            customerId: booking.customer.id,
+            companyId,
+          },
+        },
+        select: { id: true },
+      },
+    );
 
     const res = {
       id: booking.id,
       status: booking.status,
       tag: booking.tag,
-      // date: booking.date.toISOString().split("T")[0],
       comment: booking.comment,
       location: {
-        // id: booking.location.id,
-        // name: booking.location.name,
-        // avatar: buildFileUrl(booking.location.avatar),
+        id: booking.location.id,
+        name: booking.location.name,
+        avatar: buildFileUrl(booking.location.avatar),
       },
-      // customer: {
-      //   id: booking.customer.id,
-      //   profile_id: customerCompany?.id,
-      //   first_name: booking.customer.firstName,
-      //   last_name: booking.customer.lastName,
-      //   full_name: getFullName(
-      //     booking.customer.firstName,
-      //     booking.customer.lastName,
-      //   ),
-      //   phone: booking.customer.phone,
-      //   email: booking.customer.email,
-      //   birthday: booking.customer.birthday,
-      //   avatar: buildFileUrl(booking.customer.avatar),
-      // },
-      // new_data: booking.services,
-      // employee: {
-      //   id: booking.employee.id,
-      //   first_name: booking.employee.firstName,
-      //   last_name: booking.employee.lastName,
-      //   full_name: getFullName(
-      //     booking.employee.firstName,
-      //     booking.employee.lastName,
-      //   ),
-      //   phone: booking.employee.phone,
-      //   email: booking.employee.email,
-      //   avatar: buildFileUrl(booking.employee.avatar),
-      // },
-      // services: booking.services.map((service) => ({
-      //   booking_service_id: service.id,
-      //   booking_service_price: service.price,
-      //   booking_service_count: service.count,
-      //   booking_service_duration: service.duration,
-      //   service: {
-      //     id: service.service.id,
-      //     name: service.service.name,
-      //     duration: service.service.duration,
-      //     avatar: buildFileUrl(service.service.avatar),
-      //     prices: {
-      //       price: service.service.price?.price,
-      //       cost_price: service.service.price?.costPrice,
-      //     },
-      //   },
-      // })),
-      /*
-        !!=====!! СТАРЫЙ ВЫВОД УСЛУГ !!=====!!
-      */
-      // service: {
-      //   id: booking.service.id,
-      //   name: booking.service.name,
-      //   duration: booking.service.duration,
-      //   public_name: booking.service.publicName,
-      //   type: booking.service.type,
-      //   category: booking.service.category,
-      //   avatar: buildFileUrl(booking.service.avatar),
-      //   mark: booking.service.mark,
-      //   prices: {
-      //     price: booking.service.price?.price,
-      //     cost_price: booking.service.price?.costPrice,
-      //   },
-      // },
-      // order: {
-      //   id: booking.order?.id ?? null,
-      //   status: booking.order?.status ?? null,
-      //   tag: booking.order?.tag ?? null,
-      //   subtotal: booking.order?.subtotal ?? null,
-      //   total: booking.order?.total ?? null,
-      //   discount: booking.order?.discount ?? null,
-      //   payment_method: booking.order?.paymentMethod ?? null,
-      //   paid_at: booking.order?.paidAt ?? null,
-      // },
+      customer: {
+        id: booking.customer.id,
+        profile_id: customerCompany?.id,
+        first_name: booking.customer.firstName,
+        last_name: booking.customer.lastName,
+        full_name: getFullName(
+          booking.customer.firstName,
+          booking.customer.lastName,
+        ),
+        phone: booking.customer.phone,
+        email: booking.customer.email,
+        birthday: booking.customer.birthday,
+        avatar: buildFileUrl(booking.customer.avatar),
+      },
+      booking_services: booking.services.map((service) => ({
+        booking_service_id: service.id,
+        booking_service_start_time: service.startTime,
+        booking_service_end_time: service.endTime,
+        booking_service_duration: service.duration,
+        booking_service_price: service.unitPrice,
+        booking_service_count: service.count,
+        service: {
+          service_id: service.service.id,
+          name: service.service.name,
+          mark: service.service.mark,
+          duration: service.service.duration,
+          avatar: buildFileUrl(service.service.avatar),
+          prices: {
+            price: service.service.price?.price,
+            cost_price: service.service.price?.costPrice,
+          },
+        },
+        user: {
+          user_id: service.employee.id,
+          first_name: service.employee.firstName,
+          last_name: service.employee.lastName,
+          full_name: getFullName(
+            service.employee.firstName,
+            service.employee.lastName,
+          ),
+          phone: service.employee.phone,
+          avatar: buildFileUrl(service.employee.avatar),
+        },
+      })),
+      order: booking.order
+        ? {
+            id: booking.order?.id,
+            status: booking.order?.status,
+            tag: booking.order?.tag,
+            subtotal: booking.order?.subtotal,
+            total: booking.order?.total,
+            discount: booking.order?.discount,
+            payment_method: booking.order?.paymentMethod,
+            paid_at: booking.order?.paidAt,
+          }
+        : null,
     };
 
     return res;
@@ -1112,10 +1032,7 @@ export class BookingsService {
 
   async getCustomerBookings(companyId: string, customerId: string) {
     const customer = await this.prismaService.customerCompany.findUnique({
-      where: {
-        companyId,
-        id: customerId,
-      },
+      where: { customerId_companyId: { customerId, companyId } },
       select: { customerId: true },
     });
 
@@ -1125,6 +1042,7 @@ export class BookingsService {
           status: HttpStatus.NOT_FOUND,
           title: "Клиент не найден",
           detail: "Не удалось найти клиента",
+          meta: { customer_id: customerId },
         },
         HttpStatus.NOT_FOUND,
       );
