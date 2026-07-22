@@ -20,5 +20,6 @@ export class BookingCreateOrderDto {
     required: true,
   })
   @IsEnum(OrderStatus)
-  status: OrderStatus | undefined;
+  @IsOptional()
+  status?: OrderStatus;
 }
