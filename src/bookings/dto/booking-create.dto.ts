@@ -2,8 +2,8 @@ import { BookingStatus, BookingType } from "@prisma/client";
 import {
   ArrayNotEmpty,
   IsArray,
-  IsDateString,
   IsEnum,
+  IsISO8601,
   IsNumber,
   IsOptional,
   IsPhoneNumber,
@@ -68,19 +68,11 @@ export class BookingCreateServiceDto {
   count!: number;
 
   @ApiProperty({
-    example: "24-11-2025",
-    description: "Дата в формате YYYY-MM-DD",
+    example: "2026-07-22T10:00",
+    description: "Дата и время начала в формате ISO 8601",
     required: true,
   })
-  @IsDateString()
-  date!: string;
-
-  @ApiProperty({
-    example: "10:00",
-    description: "Время начала",
-    required: true,
-  })
-  @IsString()
+  @IsISO8601()
   start_time!: string;
 
   @ApiProperty({
@@ -156,8 +148,7 @@ export class BookingCreateDto {
         service_id: "5d48c70b-c018-4e93-8673-b6be4f4fad93",
         price: 999,
         count: 1,
-        date: "2026-07-21",
-        start_time: "18:33",
+        start_time: "2026-07-22T10:00",
         duration: 120,
         users: [
           {

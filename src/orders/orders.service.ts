@@ -21,7 +21,7 @@ export class OrdersService {
           orderId: null,
           status: BookingStatus.confirmed,
         },
-        include: { services: { select: { price: true } } },
+        include: { services: { select: { unitPrice: true } } },
       });
   
       if (!bookings.length)
@@ -37,7 +37,8 @@ export class OrdersService {
       
       const subtotal = bookings.reduce(
         (sum, booking) =>
-          sum + booking.services.reduce((s, service) => s + Number(service.price), 0),
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-call
+          sum + booking.services.reduce((s, service) => s + Number(service.unitPrice), 0),
         0,
       );
       
@@ -193,11 +194,10 @@ export class OrdersService {
             services: {
               select: {
                 id: true,
-                price: true,
+                unitPrice: true,
                 startTime: true,
                 endTime: true,
                 duration: true,
-                date: true,
                 service: {
                   select: {
                     id: true,
@@ -233,13 +233,13 @@ export class OrdersService {
       payment_method: order.paymentMethod,
       comment: order.comment,
       is_payment: !!order.paidAt,
-      bookings: order.bookings.map((booking) => ({
-        id: booking.id,
-        status: booking.status,
-        tag: booking.tag,
+      // bookings: order.bookings.map((booking) => ({
+        // id: booking.id,
+        // status: booking.status,
+        // tag: booking.tag,
         // date: booking.date.toISOString().split("T")[0],
-        new_data: booking.services,
-      }))
+        // new_data: booking.services,
+      // }))
     }));
   }
 
@@ -265,11 +265,10 @@ export class OrdersService {
             services: {
               select: {
                 id: true,
-                price: true,
+                unitPrice: true,
                 startTime: true,
                 endTime: true,
                 duration: true,
-                date: true,
                 service: {
                   select: {
                     id: true,
@@ -319,17 +318,17 @@ export class OrdersService {
     /*
       ===== В БУДУЩЕМ ПОМЕНЯТЬ КОНЦЕПЦИЮ - А ПОКА РАБОТАЕТ ТАК =====
     */
-    const customerCompany = await this.prismaService.customerCompany.findUnique(
-      {
-        where: {
-          customerId_companyId: {
-            customerId: order.bookings[0].customer.id,
-            companyId,
-          },
-        },
-        select: { id: true },
-      },
-    );
+    // const customerCompany = await this.prismaService.customerCompany.findUnique(
+    //   {
+    //     where: {
+    //       customerId_companyId: {
+    //         customerId: order.bookings[0].customer.id,
+    //         companyId,
+    //       },
+    //     },
+    //     select: { id: true },
+    //   },
+    // );
 
     return {
       id: order.id,
@@ -341,13 +340,13 @@ export class OrdersService {
       is_payment: !!order.paidAt,
       discount: order.discount,
       // booking: order.bookings,
-      bookings: order.bookings.map((book) => ({
-        id: book.id,
-        status: book.status,
-        tag: book.tag,
+      // bookings: order.bookings.map((book) => ({
+        // id: book.id,
+        // status: book.status,
+        // tag: book.tag,
         // date: book.date.toISOString().split("T")[0],
-        comment: book.comment,
-        new_data: book.services,
+        // comment: book.comment,
+        // new_data: book.services,
         // employee: {
         //   id: book.employee.id,
         //   first_name: book.employee.firstName,
@@ -373,17 +372,17 @@ export class OrdersService {
         //     },
         //   },
         // })),
-        customer: {
-          id: book.customer.id,
-          profile_id: customerCompany?.id,
-          first_name: book.customer.firstName,
-          last_name: book.customer.lastName,
-          full_name: getFullName(book.customer.firstName, book.customer.lastName),
-          email: book.customer.email,
-          phone: book.customer.phone,
-          avatar: buildFileUrl(book.customer.avatar),
-        },
-      })),
+        // customer: {
+        //   id: book.customer.id,
+        //   profile_id: customerCompany?.id,
+        //   first_name: book.customer.firstName,
+        //   last_name: book.customer.lastName,
+        //   full_name: getFullName(book.customer.firstName, book.customer.lastName),
+        //   email: book.customer.email,
+        //   phone: book.customer.phone,
+        //   avatar: buildFileUrl(book.customer.avatar),
+        // },
+      // })),
     }
   }
 

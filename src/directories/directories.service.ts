@@ -346,8 +346,8 @@ export class DirectoriesService {
 
     const bookings = await this.PrismaService.booking.findMany({
       where: {
-        employeeId: userId,
-        date: new Date(date),
+        // employeeId: userId,
+        // date: new Date(date),
         status: { not: "cancelled" },
       },
       // select: {
@@ -376,7 +376,8 @@ export class DirectoriesService {
     }
 
     function hasOverlap(start: number, end: number) {
-      return bookings.some((booking) => {
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      return bookings.some((_booking) => {
         /*
           !!!!! ПОДПРАВИТЬ ДАННЫЕ !!!!!
         */
@@ -395,9 +396,10 @@ export class DirectoriesService {
     const slots: string[] = [];
 
     for (const schedule of user.schedules) {
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       for (const interval of schedule.intervals) {
-        const intervalStart = timeToMinutes(interval.start);
-        const intervalEnd = timeToMinutes(interval.end);
+        const intervalStart = timeToMinutes("interval.start");
+        const intervalEnd = timeToMinutes("interval.end");
 
         for (
           let current = intervalStart;

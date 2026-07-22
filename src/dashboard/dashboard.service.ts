@@ -102,6 +102,7 @@ export class DashboardService {
       distinct: ["orderId"],
     });
 
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const filtered = bookings.filter((_b) =>
       // this.isDateInRange(b.date ?? new Date(), dateStart, dateEnd),
       this.isDateInRange(new Date(), dateStart, dateEnd),
@@ -153,6 +154,7 @@ export class DashboardService {
     dateEnd: Date,
   ): Promise<number> {
     const dateStartStr = dateStart.toISOString().split("T")[0];
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const dateEndStr = dateEnd.toISOString().split("T")[0];
 
     if (locationId) {
@@ -174,7 +176,6 @@ export class DashboardService {
           companyId,
           locationId,
           customerId: { in: customerIds },
-          date: { lt: dateStartStr },
         },
         select: { customerId: true },
         distinct: ["customerId"],
@@ -236,17 +237,17 @@ export class DashboardService {
         ...(locationId ? { locationId } : {}),
         status: "completed",
         orderId: { not: null },
-        date: {
-          gte: from ? new Date(from) : undefined,
-          lte: to ? new Date(to) : undefined,
-        },
+        // date: {
+        //   gte: from ? new Date(from) : undefined,
+        //   lte: to ? new Date(to) : undefined,
+        // },
         order: {
           status: "paid",
         },
       },
       select: {
-        date: true,
-        startTime: true,
+        // date: true,
+        // startTime: true,
         order: {
           select: {
             total: true,
@@ -254,9 +255,9 @@ export class DashboardService {
           },
         },
       },
-      orderBy: {
-        date: "asc",
-      },
+      // orderBy: {
+      //   date: "asc",
+      // },
     });
 
     /*
@@ -264,7 +265,8 @@ export class DashboardService {
       !!!!!! ПОДРАВИТЬ ДАННЫЕ !!!!!!    
     */
     return bookings.map((b) => ({
-      date: `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, "0")}-${String(new Date().getDate()).padStart(2, "0")} ${b.startTime}`,
+      // date: `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, "0")}-${String(new Date().getDate()).padStart(2, "0")} ${b.startTime}`,
+      date: `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, "0")}-${String(new Date().getDate()).padStart(2, "0")}`,
       profit: b.order?.total ?? b.order?.subtotal,
     }));
   }

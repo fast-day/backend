@@ -5,3 +5,10 @@ export function calcEndTime(start_time: string, duration: number): string {
   const endMinutes = total % 60;
   return `${String(endHours).padStart(2, "0")}:${String(endMinutes).padStart(2, "0")}`;
 }
+
+export function calcEndTimeDate(
+  startTime: Date,
+  durationMinutes: number,
+): Date {
+  return new Date(startTime.getTime() + durationMinutes * 60_000);
+}

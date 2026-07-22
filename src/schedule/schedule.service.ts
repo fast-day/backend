@@ -59,11 +59,16 @@ export class ScheduleService {
       });
 
       const intervals = await t.scheduleInterval.createManyAndReturn({
-        data: dto.intervals.map((i) => ({
-          start: i.start,
-          end: i.end,
-          scheduleId: sch.id,
-        })),
+        data: dto.intervals.map((i) => {
+          const [hours, minutes] = i.start.split("T")[1].split(":");
+          const [endHours, endMinutes] = i.end.split("T")[1].split(":");
+
+          return {
+            start: new Date(Date.UTC(1970, 0, 1, +hours, +minutes)),
+            end: new Date(Date.UTC(1970, 0, 1, +endHours, +endMinutes)),
+            scheduleId: sch.id,
+          };
+        }),
         select: { start: true, end: true },
       });
 
@@ -172,11 +177,16 @@ export class ScheduleService {
       });
 
       await t.scheduleInterval.createMany({
-        data: dto.intervals.map((i) => ({
-          start: i.start,
-          end: i.end,
-          scheduleId: sch.id,
-        })),
+        data: dto.intervals.map((i) => {
+          const [hours, minutes] = i.start.split("T")[1].split(":");
+          const [endHours, endMinutes] = i.end.split("T")[1].split(":");
+
+          return {
+            start: new Date(Date.UTC(1970, 0, 1, +hours, +minutes)),
+            end: new Date(Date.UTC(1970, 0, 1, +endHours, +endMinutes)),
+            scheduleId: sch.id,
+          };
+        }),
       });
 
       const result = await t.schedule.findUnique({

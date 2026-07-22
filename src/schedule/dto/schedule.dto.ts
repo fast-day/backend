@@ -3,8 +3,8 @@ import { Type } from "class-transformer";
 import {
   IsArray,
   IsDateString,
+  IsISO8601,
   IsString,
-  Matches,
   ValidateNested,
 } from "class-validator";
 
@@ -15,25 +15,19 @@ export type Interval = {
 
 export class IntervalDto {
   @ApiProperty({
-    example: "10:00",
-    description: "Время начала в формате HH:MM",
+    example: "2026-07-22T10:00",
+    description: "Дата и время начала в формате ISO 8601",
     required: true,
   })
-  @IsString()
-  @Matches(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, {
-    message: "Время должно быть в формате HH:MM",
-  })
+  @IsISO8601()
   start!: string;
 
   @ApiProperty({
-    example: "22:15",
-    description: "Время окончания в формате HH:MM",
+    example: "2026-07-22T10:00",
+    description: "Дата и время начала в формате ISO 8601",
     required: true,
   })
-  @IsString()
-  @Matches(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, {
-    message: "Время должно быть в формате HH:MM",
-  })
+  @IsISO8601()
   end!: string;
 }
 

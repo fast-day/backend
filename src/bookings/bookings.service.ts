@@ -3,7 +3,6 @@ import { PrismaService } from "src/prisma/prisma.service";
 import {
   BookingCreateDto,
   BookingCreateServiceDto,
-  BookingCreateServiceUserDto,
 } from "./dto/booking-create.dto";
 // import { IBookingDetails } from "./type/bookings.type";
 import { BookingStatusDto } from "./dto/booking-status.dto";
@@ -20,11 +19,14 @@ import { normalizePhone } from "src/shared/utils/phone";
 import { OrdersService } from "src/orders/orders.service";
 import { BookingCreateOrderDto } from "./dto/booking-create-order.dto";
 import { MailService } from "src/mail/mail.service";
-import { generateOrderTag } from "src/orders/utils/generate-order-tag";
 import { getFullName } from "src/shared/utils/get-full-name.util";
 import { BookingDtoService } from "./dto/booking-base.dto";
-import { calcEndTime } from "src/shared/utils/calc-end-time.util";
+import {
+  calcEndTime,
+  calcEndTimeDate,
+} from "src/shared/utils/calc-end-time.util";
 import { BookingCreateCustomerOldDto } from "./dto/booking-create-customer.dto";
+import { combineDateAndTime } from "src/shared/utils/combine-date-and-time.util";
 
 @Injectable()
 export class BookingsService {
@@ -62,92 +64,89 @@ export class BookingsService {
   }
 
   private async validateEmployeeLocation(
-    employees: BookingCreateServiceUserDto[],
+    employeeIds: string[],
     locationId: string,
-  ): Promise<string> {
-    const employeeIds = employees.map((s) => s.id);
-
-    const employeeLocation = await this.prismaService.userLocation.findMany({
+  ): Promise<void> {
+    const employeeLocations = await this.prismaService.userLocation.findMany({
       where: { userId: { in: employeeIds }, locationId },
-      select: { locationId: true, userId: true },
+      select: { userId: true },
     });
 
-    const foundsIds = new Set(employeeLocation.map((emp) => emp.userId));
-    const missing = employeeIds.filter((id) => !foundsIds.has(id));
+    const foundIds = new Set(employeeLocations.map((e) => e.userId));
+    const missing = employeeIds.filter((id) => !foundIds.has(id));
 
-    if (missing.length > 0)
+    if (missing.length > 0) {
       throw new HttpException(
         {
           status: HttpStatus.BAD_REQUEST,
           title: "Ошибка сотрудника",
-          detail: "Один из выбранный сотрудников не работает в данной локации.",
+          detail: "Один из выбранных сотрудников не работает в данной локации.",
           meta: { employee_ids: missing },
         },
         HttpStatus.BAD_REQUEST,
       );
-
-    return employeeLocation[0].locationId;
+    }
   }
 
   private async validateService(
     services: BookingCreateServiceDto[],
     companyId: string,
-  ): Promise<boolean> {
-    const serviceIds = services.map((service) => service.service_id);
-    const service = await this.prismaService.service.findMany({
-      where: {
-        id: { in: serviceIds },
-        companyId,
-      },
+  ): Promise<void> {
+    const serviceIds = services.map((s) => s.service_id);
+    const found = await this.prismaService.service.findMany({
+      where: { id: { in: serviceIds }, companyId },
+      select: { id: true },
     });
 
-    const foundIds = new Set(service.map((ls) => ls.id));
+    const foundIds = new Set(found.map((s) => s.id));
     const missing = serviceIds.filter((id) => !foundIds.has(id));
 
-    if (missing.length > 0)
+    if (missing.length > 0) {
       throw new HttpException(
         {
           status: HttpStatus.BAD_REQUEST,
-          title: "Ошибка Услуги",
+          title: "Ошибка услуги",
           detail: "Часть выбранных услуг не доступны",
           meta: { service_ids: missing },
         },
         HttpStatus.BAD_REQUEST,
       );
-
-    return true;
+    }
   }
 
   private async validateEmployeeService(
-    employees: BookingCreateServiceUserDto[],
-    service: BookingDtoService[],
-  ): Promise<boolean> {
-    const serviceIds = service.map((service) => service.service_id);
-    const employeeIds = employees.map((emp) => emp.id);
-
-    const employee = await this.prismaService.userService.findMany({
+    employeeIds: string[],
+    serviceIds: string[],
+  ): Promise<void> {
+    const found = await this.prismaService.userService.findMany({
       where: { userId: { in: employeeIds }, serviceId: { in: serviceIds } },
       select: { serviceId: true, userId: true },
     });
 
-    const foundIds = new Set(employee.map((ls) => ls.serviceId));
-    const missing = serviceIds.filter((id) => !foundIds.has(id));
+    const foundServiceIds = new Set(found.map((f) => f.serviceId));
+    const missingServiceIds = serviceIds.filter(
+      (id) => !foundServiceIds.has(id),
+    );
 
-    const empIds = new Set(employee.map((emp) => emp.userId));
-    const missingEmpIds = employeeIds.filter((id) => !empIds.has(id));
+    const foundEmployeeIds = new Set(found.map((f) => f.userId));
+    const missingEmployeeIds = employeeIds.filter(
+      (id) => !foundEmployeeIds.has(id),
+    );
 
-    if (missing.length > 0)
+    if (missingServiceIds.length > 0 || missingEmployeeIds.length > 0) {
       throw new HttpException(
         {
           status: HttpStatus.BAD_REQUEST,
           title: "Ошибка услуги",
           detail: "Выбранный сотрудник не оказывает часть выбранных услуг",
-          meta: { employee_ids: missingEmpIds, service_ids: missing },
+          meta: {
+            employee_ids: missingEmployeeIds,
+            service_ids: missingServiceIds,
+          },
         },
         HttpStatus.BAD_REQUEST,
       );
-
-    return true;
+    }
   }
 
   private async validateCustomer(
@@ -170,73 +169,96 @@ export class BookingsService {
         HttpStatus.NOT_FOUND,
       );
 
-    const isCustomerCompany =
-      await this.prismaService.customerCompany.findFirst({
-        where: { customerId: customer.id, companyId },
-        select: { id: true, customerId: true },
-      });
+    const existingLink = await this.prismaService.customerCompany.findFirst({
+      where: { customerId: customer.id, companyId },
+      select: { id: true },
+    });
 
-    if (!isCustomerCompany) {
+    if (!existingLink) {
       await this.prismaService.customerCompany.create({
-        data: {
-          companyId,
-          customerId: customer.id,
-        },
+        data: { companyId, customerId: customer.id },
       });
     }
 
     return customer.id;
   }
 
-  // private async validateCustomerWorked(
-  //   services: BookingCreateServiceDto[],
-  //   userLocationId: string,
-  // ): Promise<boolean> {
-  // const isWorked = await this.prismaService.schedule.findFirst({
-  //   where: {
-  //     date: new Date(date),
-  //     userLocationId,
-  //     intervals: {
-  //       some: {
-  //         start: { lte: start_time },
-  //         end: { gte: end_time },
-  //       },
-  //     },
-  //   },
-  // });
-
-  // if (!isWorked)
-  //   throw new HttpException(
-  //     {
-  //       status: HttpStatus.BAD_REQUEST,
-  //       title: "Ошибка расписания",
-  //       detail: "Сотрудник не работает в указанный период времени.",
-  //       meta: { employee_id: userLocationId },
-  //     },
-  //     HttpStatus.BAD_REQUEST,
-  //   );
-
-  // return true;
-  // }
-
-  private async validateOverlapping(
-    employeeId: string,
+  private async validateEmployeeWorked(
+    userLocationId: string,
     date: Date,
-    end_time: string,
-    start_time: string,
-    booking_id: string = "",
-  ): Promise<boolean> {
-    const isOverlapping = await this.prismaService.booking.findFirst({
+    startTime: Date,
+    endTime: Date,
+  ): Promise<void> {
+    const dayStart = new Date(date);
+    dayStart.setHours(0, 0, 0, 0);
+
+    console.log({
+      dayStart,
+      dayStartISO: dayStart.toISOString(),
+      userLocationId,
+    });
+
+    const schedule = await this.prismaService.schedule.findFirst({
+      where: { date: dayStart, userLocationId },
+      include: { intervals: true },
+    });
+
+    console.log(schedule);
+
+    if (!schedule) {
+      throw new HttpException(
+        {
+          status: HttpStatus.BAD_REQUEST,
+          title: "Ошибка расписания",
+          detail: "У сотрудника нет рабочего графика на эту дату.",
+          meta: { user_location_id: userLocationId },
+        },
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
+    const isWorked = schedule.intervals.some((interval) => {
+      const intervalStart = combineDateAndTime(dayStart, interval.start);
+      const intervalEnd = combineDateAndTime(dayStart, interval.end);
+
+      console.log({
+        startTime,
+        endTime,
+        intervalStart,
+        intervalEnd,
+      });
+      return intervalStart <= startTime && intervalEnd >= endTime;
+    });
+
+    if (!isWorked) {
+      throw new HttpException(
+        {
+          status: HttpStatus.BAD_REQUEST,
+          title: "Ошибка расписания",
+          detail: "Сотрудник не работает в указанный период времени.",
+          meta: { user_location_id: userLocationId },
+        },
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+  }
+
+  private async validateEmployeeOverlapping(
+    employeeId: string,
+    startTime: Date,
+    endTime: Date,
+    excludeBookingId: string = "",
+  ): Promise<void> {
+    const overlap = await this.prismaService.bookingService.findFirst({
       where: {
         employeeId,
-        date: new Date(date),
-        id: { not: booking_id },
-        startTime: { lt: end_time },
-        endTime: { gt: start_time },
+        bookingId: { not: excludeBookingId },
+        startTime: { lt: endTime },
+        endTime: { gt: startTime },
       },
     });
 
-    if (isOverlapping)
+    if (overlap) {
       throw new HttpException(
         {
           status: HttpStatus.BAD_REQUEST,
@@ -247,141 +269,171 @@ export class BookingsService {
         },
         HttpStatus.BAD_REQUEST,
       );
-
-    return true;
+    }
   }
 
   private async validateCustomerOverlapping(
     customerId: string,
-    date: Date,
-    start_time: string,
-    end_time: string,
-  ) {
-    const overlap = await this.prismaService.booking.findFirst({
+    startTime: Date,
+    endTime: Date,
+    excludeBookingId: string = "",
+  ): Promise<void> {
+    const overlap = await this.prismaService.bookingService.findFirst({
       where: {
-        customerId,
-        date: new Date(date),
-        startTime: { lt: end_time },
-        endTime: { gt: start_time },
+        booking: { customerId, id: { not: excludeBookingId } },
+        startTime: { lt: endTime },
+        endTime: { gt: startTime },
       },
     });
 
-    if (overlap)
+    if (overlap) {
       throw new HttpException(
         {
           status: HttpStatus.BAD_REQUEST,
           title: "Ошибка бронирования",
-          detail: "Услуга уже забронирована другим пользователем",
+          detail: "Клиент уже записан на другую услугу в это время",
           meta: { customer_id: customerId },
         },
         HttpStatus.BAD_REQUEST,
       );
+    }
   }
 
   async create(dto: BookingCreateDto, company_id: string) {
     return this.prismaService.$transaction(async (t) => {
+      const resolvedServices = dto.services.map((service) => {
+        if (service.users.length !== 1) {
+          throw new HttpException(
+            {
+              status: HttpStatus.BAD_REQUEST,
+              title: "Ошибка сотрудника",
+              detail:
+                "На одну услугу должен быть назначен ровно один сотрудник",
+              meta: { service_id: service.service_id },
+            },
+            HttpStatus.BAD_REQUEST,
+          );
+        }
+
+        const startTime = new Date(service.start_time);
+        const endTime = calcEndTimeDate(startTime, service.duration);
+
+        return {
+          ...service,
+          employeeId: service.users[0].id,
+          startTime,
+          endTime,
+        };
+      });
+
+      const employeeIds = [
+        ...new Set(resolvedServices.map((s) => s.employeeId)),
+      ];
+      const serviceIds = resolvedServices.map((s) => s.service_id);
+
       await this.validateLocation(dto.location_id, dto.services);
+      await this.validateEmployeeLocation(employeeIds, dto.location_id);
+      await this.validateEmployeeService(employeeIds, serviceIds);
+      await this.validateService(dto.services, company_id);
 
-      const employees = dto.services.map((s) => s.users);
-
-      const locationId = await this.validateEmployeeLocation(
-        employees.flat(),
-        dto.location_id,
-      );
-      await this.validateEmployeeService(employees.flat(), dto.services);
       const customerId = await this.validateCustomer(
         dto.customers[0].id,
         company_id,
       );
-      await this.validateService(dto.services, company_id);
-      // await this.validateCustomerWorked(dto.services, locationId);
-      //   await this.validateOverlapping(
-      //     dto.employee_id,
-      //     new Date(dto.date),
-      //     dto.end_time,
-      //     dto.start_time,
-      //   );
-      //   await this.validateCustomerOverlapping(
-      //     customerId,
-      //     new Date(dto.date),
-      //     dto.start_time,
-      //     dto.end_time,
-      //   );
 
-      // const booking = await t.booking.create({
-      //   data: {
-      //     tag: generateBookingTag(),
-      //     comment: dto.comment,
-      //     status: dto.status ?? "pending",
-      //     type: dto.type,
-      //     locationId: dto.location_id,
-      //     companyId: company_id,
+      for (const service of resolvedServices) {
+        const userLocation = await t.userLocation.findFirst({
+          where: { userId: service.employeeId, locationId: dto.location_id },
+          select: { id: true },
+        });
 
-      //     /*
-      //       !!!!! УДАЛИТЬ EmployeeID CustomerId !!!!!
-      //     */
-      //     employeeId: "133375e2-65a7-42f4-9818-d8b81b12c486",
-      //     customerId: "4c1d3ad7-dbe0-4e47-a2cc-fef25291c72e",
+        await this.validateEmployeeWorked(
+          userLocation!.id,
+          service.startTime,
+          service.startTime,
+          service.endTime,
+        );
+        await this.validateEmployeeOverlapping(
+          service.employeeId,
+          service.startTime,
+          service.endTime,
+        );
+        await this.validateCustomerOverlapping(
+          customerId,
+          service.startTime,
+          service.endTime,
+        );
+      }
 
-      //     services: {
-      //       createMany: {
-      //         data: dto.services.map((service) => ({
-      //           serviceId: service.service_id,
-      //           price: service.price,
-      //           count: service.count,
-      //           date: new Date(service.date),
-      //           startTime: service.start_time,
-      //           endTime: calcEndTime(service.start_time, service.duration),
-      //           duration: service.duration,
-      //           employeeId: service.users[0].id,
-      //         })),
-      //       },
-      //     },
-      //   },
-      //   select: {
-      //     id: true,
-      //     tag: true,
-      //     status: true,
-      //     comment: true,
-      //     customer: {
-      //       select: {
-      //         id: true,
-      //         phone: true,
-      //         firstName: true,
-      //         lastName: true,
-      //         avatar: true,
-      //       },
-      //     },
-      // services: {
-      //   select: {
-      //     id: true,
-      //     price: true,
-      //     startTime: true,
-      //     endTime: true,
-      //     duration: true,
-      //     date: true,
-      //     service: {
-      //       select: {
-      //         id: true,
-      //         name: true,
-      //         avatar: true,
-      //         mark: true,
-      //         price: { select: { price: true, costPrice: true } },
-      //         duration: true,
-      //       },
-      //     },
-      //     employee: {
-      //       select: {
-      //         id: true,
-      //         firstName: true,
-      //         lastName: true,
-      //         avatar: true,
-      //       },
-      //     },
-      //   },
-      // },
-      //   },
-      // });
+      const booking = await t.booking.create({
+        data: {
+          tag: generateBookingTag(),
+          comment: dto.comment,
+          status: dto.status ?? "pending",
+          type: dto.type,
+          locationId: dto.location_id,
+          companyId: company_id,
+          customerId,
+
+          services: {
+            createMany: {
+              data: dto.services.map((service) => ({
+                serviceId: service.service_id,
+                price: service.price,
+                count: service.count,
+                startTime: service.start_time,
+                endTime: calcEndTime(service.start_time, service.duration),
+                duration: service.duration,
+                employeeId: service.users[0].id,
+              })),
+            },
+          },
+        },
+        select: {
+          id: true,
+          tag: true,
+          status: true,
+          comment: true,
+          customer: {
+            select: {
+              id: true,
+              phone: true,
+              firstName: true,
+              lastName: true,
+              avatar: true,
+            },
+          },
+          services: {
+            select: {
+              id: true,
+              unitPrice: true,
+              startTime: true,
+              endTime: true,
+              duration: true,
+              service: {
+                select: {
+                  id: true,
+                  name: true,
+                  avatar: true,
+                  mark: true,
+                  price: { select: { price: true, costPrice: true } },
+                  duration: true,
+                },
+              },
+              employee: {
+                select: {
+                  id: true,
+                  firstName: true,
+                  lastName: true,
+                  avatar: true,
+                },
+              },
+            },
+          },
+        },
+      });
+
+      return booking;
 
       //     select: {
       //       id: true,
@@ -587,11 +639,10 @@ export class BookingsService {
           services: {
             select: {
               id: true,
-              price: true,
+              unitPrice: true,
               startTime: true,
               endTime: true,
               duration: true,
-              date: true,
               service: {
                 select: {
                   id: true,
@@ -660,20 +711,20 @@ export class BookingsService {
       tag: booking.tag,
       // date: booking.date.toISOString().split("T")[0],
       comment: booking.comment,
-      subtotal: booking.order?.subtotal,
-      payment_method: booking.order?.paymentMethod,
-      customer: {
-        id: booking.customer.id,
-        phone: booking.customer.phone,
-        full_name: getFullName(
-          booking.customer.firstName,
-          booking.customer.lastName,
-        ),
-        first_name: booking.customer.firstName,
-        last_name: booking.customer.lastName,
-        avatar: buildFileUrl(booking.customer.avatar),
-      },
-      new: booking.services,
+      // subtotal: booking.order?.subtotal,
+      // payment_method: booking.order?.paymentMethod,
+      // customer: {
+      //   id: booking.customer.id,
+      //   phone: booking.customer.phone,
+      //   full_name: getFullName(
+      //     booking.customer.firstName,
+      //     booking.customer.lastName,
+      //   ),
+      //   first_name: booking.customer.firstName,
+      //   last_name: booking.customer.lastName,
+      //   avatar: buildFileUrl(booking.customer.avatar),
+      // },
+      // new: booking.services,
       // employee: {
       //   id: booking.employee.id,
       //   full_name: getFullName(
@@ -751,6 +802,7 @@ export class BookingsService {
     return { success: true, booking_id: booking.id };
   }
 
+  // eslint-disable-next-line @typescript-eslint/require-await, @typescript-eslint/no-unused-vars
   async update(dto: BookingUpdateDto, bookingId: string, company_id: string) {
     // await this.getById(bookingId);
     // await this.validateLocation(dto.location_id, dto.services);
@@ -910,11 +962,10 @@ export class BookingsService {
         services: {
           select: {
             id: true,
-            price: true,
+            unitPrice: true,
             startTime: true,
             endTime: true,
             duration: true,
-            date: true,
             service: {
               select: {
                 id: true,
@@ -961,17 +1012,17 @@ export class BookingsService {
         HttpStatus.NOT_FOUND,
       );
 
-    const customerCompany = await this.prismaService.customerCompany.findUnique(
-      {
-        where: {
-          customerId_companyId: {
-            customerId: booking.customer.id,
-            companyId,
-          },
-        },
-        select: { id: true },
-      },
-    );
+    // const customerCompany = await this.prismaService.customerCompany.findUnique(
+    //   {
+    //     where: {
+    //       customerId_companyId: {
+    //         customerId: booking.customer.id,
+    //         companyId,
+    //       },
+    //     },
+    //     select: { id: true },
+    //   },
+    // );
 
     const res = {
       id: booking.id,
@@ -980,25 +1031,25 @@ export class BookingsService {
       // date: booking.date.toISOString().split("T")[0],
       comment: booking.comment,
       location: {
-        id: booking.location.id,
-        name: booking.location.name,
-        avatar: buildFileUrl(booking.location.avatar),
+        // id: booking.location.id,
+        // name: booking.location.name,
+        // avatar: buildFileUrl(booking.location.avatar),
       },
-      customer: {
-        id: booking.customer.id,
-        profile_id: customerCompany?.id,
-        first_name: booking.customer.firstName,
-        last_name: booking.customer.lastName,
-        full_name: getFullName(
-          booking.customer.firstName,
-          booking.customer.lastName,
-        ),
-        phone: booking.customer.phone,
-        email: booking.customer.email,
-        birthday: booking.customer.birthday,
-        avatar: buildFileUrl(booking.customer.avatar),
-      },
-      new_data: booking.services,
+      // customer: {
+      //   id: booking.customer.id,
+      //   profile_id: customerCompany?.id,
+      //   first_name: booking.customer.firstName,
+      //   last_name: booking.customer.lastName,
+      //   full_name: getFullName(
+      //     booking.customer.firstName,
+      //     booking.customer.lastName,
+      //   ),
+      //   phone: booking.customer.phone,
+      //   email: booking.customer.email,
+      //   birthday: booking.customer.birthday,
+      //   avatar: buildFileUrl(booking.customer.avatar),
+      // },
+      // new_data: booking.services,
       // employee: {
       //   id: booking.employee.id,
       //   first_name: booking.employee.firstName,
@@ -1044,16 +1095,16 @@ export class BookingsService {
       //     cost_price: booking.service.price?.costPrice,
       //   },
       // },
-      order: {
-        id: booking.order?.id,
-        status: booking.order?.status,
-        tag: booking.order?.tag,
-        subtotal: booking.order?.subtotal,
-        total: booking.order?.total,
-        discount: booking.order?.discount,
-        payment_method: booking.order?.paymentMethod,
-        paid_at: booking.order?.paidAt,
-      },
+      // order: {
+      //   id: booking.order?.id ?? null,
+      //   status: booking.order?.status ?? null,
+      //   tag: booking.order?.tag ?? null,
+      //   subtotal: booking.order?.subtotal ?? null,
+      //   total: booking.order?.total ?? null,
+      //   discount: booking.order?.discount ?? null,
+      //   payment_method: booking.order?.paymentMethod ?? null,
+      //   paid_at: booking.order?.paidAt ?? null,
+      // },
     };
 
     return res;
@@ -1106,11 +1157,10 @@ export class BookingsService {
         services: {
           select: {
             id: true,
-            price: true,
+            unitPrice: true,
             startTime: true,
             endTime: true,
             duration: true,
-            date: true,
             service: {
               select: {
                 id: true,
@@ -1153,12 +1203,12 @@ export class BookingsService {
       // date: booking.date.toISOString().split("T")[0],
       comment: booking.comment,
       location: {
-        id: booking.location.id,
-        name: booking.location.name,
-        avatar: buildFileUrl(booking.location.avatar),
-        address: booking.location.address,
+        // id: booking.location.id,
+        // name: booking.location.name,
+        // avatar: buildFileUrl(booking.location.avatar),
+        // address: booking.location.address,
       },
-      new_data: booking.services,
+      // new_data: booking.services,
       // employee: {
       //   id: booking.employee.id,
       //   first_name: booking.employee.firstName,
@@ -1205,16 +1255,16 @@ export class BookingsService {
       //     cost_price: booking.service.price?.costPrice,
       //   },
       // },
-      order: {
-        id: booking.order?.id,
-        status: booking.order?.status,
-        tag: booking.order?.tag,
-        subtotal: booking.order?.subtotal,
-        total: booking.order?.total,
-        discount: booking.order?.discount,
-        payment_method: booking.order?.paymentMethod,
-        paid_at: booking.order?.paidAt,
-      },
+      // order: {
+      //   id: booking.order?.id,
+      //   status: booking.order?.status,
+      //   tag: booking.order?.tag,
+      //   subtotal: booking.order?.subtotal,
+      //   total: booking.order?.total,
+      //   discount: booking.order?.discount,
+      //   payment_method: booking.order?.paymentMethod,
+      //   paid_at: booking.order?.paidAt,
+      // },
     }));
   }
 
@@ -1264,11 +1314,10 @@ export class BookingsService {
         services: {
           select: {
             id: true,
-            price: true,
+            unitPrice: true,
             startTime: true,
             endTime: true,
             duration: true,
-            date: true,
             service: {
               select: {
                 id: true,
@@ -1296,7 +1345,7 @@ export class BookingsService {
 
     const res = bookings.map((booking) => ({
       id: booking.id,
-      company_name: booking.company.publicName,
+      // company_name: booking.company.publicName,
       status: booking.status,
       tag: booking.tag,
       // date: booking.date.toISOString().split("T")[0],
@@ -1308,12 +1357,12 @@ export class BookingsService {
       //   avatar: buildFileUrl(booking.employee.avatar),
       //   position: booking.employee.position,
       // },
-      location: {
-        id: booking.location.id,
-        name: booking.location.name,
-        avatar: buildFileUrl(booking.location.avatar),
-        address: booking.location.address,
-      },
+      // location: {
+      //   id: booking.location.id,
+      //   name: booking.location.name,
+      //   avatar: buildFileUrl(booking.location.avatar),
+      //   address: booking.location.address,
+      // },
       // services: booking.services.map((service) => ({
       //   booking_service_id: service.id,
       //   booking_service_price: service.price,
@@ -1351,6 +1400,7 @@ export class BookingsService {
   /*
       ===== СОЗДАНИЕ БРОНИРОВАНИЯ И ОФОРМЛЕНИЕ ЗАКАЗА СО СТОРОНЫ КЛИЕНТА =====
     */
+  // eslint-disable-next-line @typescript-eslint/require-await
   async createCustomerBooking(
     dto: BookingCreateCustomerOldDto,
     customerId: string,
