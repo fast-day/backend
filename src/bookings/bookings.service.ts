@@ -21,16 +21,12 @@ import { BookingCreateOrderDto } from "./dto/booking-create-order.dto";
 import { MailService } from "src/mail/mail.service";
 import { getFullName } from "src/shared/utils/get-full-name.util";
 import { BookingDtoService } from "./dto/booking-base.dto";
-import {
-  calcEndTime,
-  calcEndTimeDate,
-} from "src/shared/utils/calc-end-time.util";
+import { calcEndTimeDate } from "src/shared/utils/calc-end-time.util";
 import { BookingCreateCustomerOldDto } from "./dto/booking-create-customer.dto";
 import {
   combineDateAndTime,
   parseNaiveDateTime,
 } from "src/shared/utils/combine-date-and-time.util";
-import { buildEmployeeScopeFilter } from "src/shared/utils/build-employee-scope.util";
 
 @Injectable()
 export class BookingsService {
@@ -402,6 +398,7 @@ export class BookingsService {
               startTime: true,
               endTime: true,
               duration: true,
+              count: true,
               service: {
                 select: {
                   id: true,
@@ -417,6 +414,7 @@ export class BookingsService {
                   id: true,
                   firstName: true,
                   lastName: true,
+                  phone: true,
                   avatar: true,
                 },
               },
@@ -425,103 +423,54 @@ export class BookingsService {
         },
       });
 
-      return booking;
-
-      //     select: {
-      //       id: true,
-      //       tag: true,
-      //       status: true,
-      //       date: true,
-      //       startTime: true,
-      //       endTime: true,
-      //       comment: true,
-      //       employee: {
-      //         select: {
-      //           id: true,
-      //           firstName: true,
-      //           lastName: true,
-      //           email: true,
-      //           phone: true,
-      //           avatar: true,
-      //         },
-      //       },
-      //       customer: {
-      //         select: {
-      //           id: true,
-      //           phone: true,
-      //           firstName: true,
-      //           lastName: true,
-      //           avatar: true,
-      //         },
-      //       },
-      //       services: {
-      //         select: {
-      //           id: true,
-      //           price: true,
-      //           count: true,
-      //           duration: true,
-      //           service: {
-      //             select: {
-      //               id: true,
-      //               name: true,
-      //               avatar: true,
-      //               mark: true,
-      //               price: { select: { price: true, costPrice: true } },
-      //               duration: true,
-      //             },
-      //           },
-      //         },
-      //       },
-      //     },
-      //   const res = {
-      //     id: booking.id,
-      //     status: booking.status,
-      //     tag: booking.tag,
-      //     start_time: booking.startTime,
-      //     end_time: booking.endTime,
-      //     date: booking.date.toISOString().split("T")[0],
-      //     comment: booking.comment,
-      //     customer: {
-      //       id: booking.customer.id,
-      //       phone: booking.customer.phone,
-      //       full_name: getFullName(
-      //         booking.customer.firstName,
-      //         booking.customer.lastName,
-      //       ),
-      //       first_name: booking.customer.firstName,
-      //       last_name: booking.customer.lastName,
-      //       avatar: buildFileUrl(booking.customer.avatar),
-      //     },
-      //     employee: {
-      //       id: booking.employee.id,
-      //       first_name: booking.employee.firstName,
-      //       last_name: booking.employee.lastName,
-      //       full_name: getFullName(
-      //         booking.employee.firstName,
-      //         booking.employee.lastName,
-      //       ),
-      //       avatar: buildFileUrl(booking.employee.avatar),
-      //       email: booking.employee.email,
-      //       phone: booking.employee.phone,
-      //     },
-      //     services: booking.services.map((service) => ({
-      //       booking_service_id: service.id,
-      //       booking_service_price: service.price,
-      //       booking_service_count: service.count,
-      //       booking_service_duration: service.duration,
-      //       service: {
-      //         id: service.service.id,
-      //         name: service.service.name,
-      //         duration: service.service.duration,
-      //         avatar: buildFileUrl(service.service.avatar),
-      //         prices: {
-      //           price: service.service.price?.price,
-      //           cost_price: service.service.price?.costPrice,
-      //         },
-      //       },
-      //     })),
-      //   };
-      //   return res;
+      const res = {
+        id: booking.id,
+        status: booking.status,
+        tag: booking.tag,
+        comment: booking.comment,
+        customer: {
+          id: booking.customer.id,
+          phone: booking.customer.phone,
+          full_name: getFullName(
+            booking.customer.firstName,
+            booking.customer.lastName,
+          ),
+          first_name: booking.customer.firstName,
+          last_name: booking.customer.lastName,
+          avatar: buildFileUrl(booking.customer.avatar),
+        },
+        booking_services: booking.services.map((service) => ({
+          booking_service_id: service.id,
+          booking_service_start_time: service.startTime,
+          booking_service_end_time: service.endTime,
+          booking_service_duration: service.duration,
+          booking_service_price: service.unitPrice,
+          booking_service_count: service.count,
+          service: {
+            service_id: service.service.id,
+            name: service.service.name,
+            mark: service.service.mark,
+            duration: service.service.duration,
+            avatar: buildFileUrl(service.service.avatar),
+            prices: {
+              price: service.service.price?.price,
+              cost_price: service.service.price?.costPrice,
+            },
+          },
+          user: {
+            user_id: service.employee.id,
+            first_name: service.employee.firstName,
+            last_name: service.employee.lastName,
+            full_name: getFullName(
+              service.employee.firstName,
+              service.employee.lastName,
+            ),
+            phone: service.employee.phone,
+            avatar: buildFileUrl(service.employee.avatar),
+          },
+        })),
+      };
+      return res;
     });
   }
 
@@ -546,7 +495,7 @@ export class BookingsService {
       );
 
     const isOwner = user.role?.name === "owner";
-    const serviceWhere = buildEmployeeScopeFilter(isOwner, userId);
+    // const serviceWhere = buildEmployeeScopeFilter(false, userId);
 
     const where: Prisma.BookingWhereInput = {
       locationId,
@@ -556,7 +505,7 @@ export class BookingsService {
       ...(tag && {
         tag: { contains: tag, mode: Prisma.QueryMode.insensitive },
       }),
-      ...(serviceWhere && serviceWhere),
+      // ...(serviceWhere && serviceWhere),
       ...(customer && {
         customer: {
           OR: [
@@ -607,6 +556,7 @@ export class BookingsService {
             },
           },
           services: {
+            where: isOwner ? {} : { employeeId: userId },
             select: {
               id: true,
               unitPrice: true,
@@ -653,24 +603,29 @@ export class BookingsService {
       id: booking.id,
       status: booking.status,
       tag: booking.tag,
-      // date: booking.date.toISOString().split("T")[0],
       comment: booking.comment,
-      // subtotal: booking.order?.subtotal,
-      // payment_method: booking.order?.paymentMethod,
-      // customer: {
-      //   id: booking.customer.id,
-      //   phone: booking.customer.phone,
-      //   full_name: getFullName(
-      //     booking.customer.firstName,
-      //     booking.customer.lastName,
-      //   ),
-      //   first_name: booking.customer.firstName,
-      //   last_name: booking.customer.lastName,
-      //   avatar: buildFileUrl(booking.customer.avatar),
-      // },
+      customer: {
+        id: booking.customer.id,
+        phone: booking.customer.phone,
+        full_name: getFullName(
+          booking.customer.firstName,
+          booking.customer.lastName,
+        ),
+        first_name: booking.customer.firstName,
+        last_name: booking.customer.lastName,
+        avatar: buildFileUrl(booking.customer.avatar),
+      },
 
       booking_services: booking.services.map((service) => ({
         booking_service_id: service.id,
+        // booking_service_start_time: service.startTime.toLocaleTimeString(
+        //   "ru-RU",
+        //   {
+        //     timeZone: "Europe/Moscow",
+        //     hour: "2-digit",
+        //     minute: "2-digit",
+        //   },
+        // ),
         booking_service_start_time: service.startTime,
         booking_service_end_time: service.endTime,
         booking_service_duration: service.duration,
