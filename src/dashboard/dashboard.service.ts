@@ -153,7 +153,7 @@ export class DashboardService {
     dateStart: Date,
     dateEnd: Date,
   ): Promise<number> {
-    const dateStartStr = dateStart.toISOString().split("T")[0];
+    // const dateStartStr = dateStart.toISOString().split("T")[0];
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const dateEndStr = dateEnd.toISOString().split("T")[0];
 
