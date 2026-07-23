@@ -105,8 +105,12 @@ export class OrdersController {
   @UseGuards(AuthGuard, LoadUserGuard, CompanyGuard, ScopeGuard)
   @Scopes("order-customer-detail:read")
   @HttpCode(HttpStatus.OK)
-  getCustomerBookings(@Req() req, @Param("customer_id") customerId: string) {
+  getCustomerBookings(
+    @Req() req,
+    @Param("customer_id") customerId: string,
+    @Query() query: GetOrdersDto,
+  ) {
     const companyId = req.user.companyId;
-    return this.ordersService.getCustomerOrders(companyId, customerId);
+    return this.ordersService.getCustomerOrders(companyId, customerId, query);
   }
 }

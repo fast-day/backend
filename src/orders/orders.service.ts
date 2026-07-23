@@ -1,16 +1,16 @@
 /* eslint-disable prettier/prettier */
-import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
-import { PrismaService } from 'src/prisma/prisma.service';
-import { OrderCreateDto } from './dto/order-create.dto';
-import { BookingStatus, Prisma } from '@prisma/client';
-import { generateOrderTag } from './utils/generate-order-tag';
+import { HttpException, HttpStatus, Injectable } from "@nestjs/common";
+import { PrismaService } from "src/prisma/prisma.service";
+import { OrderCreateDto } from "./dto/order-create.dto";
+import { BookingStatus, Prisma } from "@prisma/client";
+import { generateOrderTag } from "./utils/generate-order-tag";
 import {
   buildPaginatedResponse,
   getPaginationParams,
-} from 'src/shared/common/pagination/pagination';
-import { GetOrdersDto, OrderSortOrder } from './dto/get-orders.dto';
-import { getFullName } from 'src/shared/utils/get-full-name.util';
-import { buildFileUrl } from 'src/shared/utils/build-url';
+} from "src/shared/common/pagination/pagination";
+import { GetOrdersDto, OrderSortOrder } from "./dto/get-orders.dto";
+import { getFullName } from "src/shared/utils/get-full-name.util";
+import { buildFileUrl } from "src/shared/utils/build-url";
 
 @Injectable()
 export class OrdersService {
@@ -31,8 +31,8 @@ export class OrdersService {
         throw new HttpException(
           {
             status: HttpStatus.BAD_REQUEST,
-            title: 'Ошибка заказа',
-            detail: 'Не удалось оформить заказ',
+            title: "Ошибка заказа",
+            detail: "Не удалось оформить заказ",
             meta: { bookings: dto.booking_ids },
           },
           HttpStatus.BAD_REQUEST,
@@ -50,7 +50,7 @@ export class OrdersService {
 
       const order = await t.order.create({
         data: {
-          status: dto.status ?? 'pending',
+          status: dto.status ?? "pending",
           subtotal,
           tag: generateOrderTag(),
           companyId,
@@ -96,12 +96,12 @@ export class OrdersService {
 
     const orderBy: Prisma.OrderOrderByWithRelationInput =
       sort === OrderSortOrder.OLDEST
-        ? { createdAt: 'asc' }
+        ? { createdAt: "asc" }
         : sort === OrderSortOrder.PRICE_ASC
-          ? { total: 'asc' }
+          ? { total: "asc" }
           : sort === OrderSortOrder.PRICE_DESC
-            ? { total: 'desc' }
-            : { createdAt: 'desc' };
+            ? { total: "desc" }
+            : { createdAt: "desc" };
 
     const [orders, total] = await Promise.all([
       this.prismaService.order.findMany({
@@ -162,11 +162,14 @@ export class OrdersService {
     return buildPaginatedResponse(data, total, page, limit);
   }
 
-  /*
-    !!!!! ИСПРАВИТЬ ПОЛУЧЕНИЕ ЗАКАЗОВ !!!!!
-    КОРОЧЕ ИСКАТЬ ЧЕРЕЗ BOOKINGS, Т.К В ORDERS НЕТ СВЯЗИ С CUSTOMER
-  */
-  async getCustomerOrders(companyId: string, customerId: string) {
+  async getCustomerOrders(
+    companyId: string,
+    customerId: string,
+    query: GetOrdersDto,
+  ) {
+    const { status, sort, ...pagination } = query;
+    const { page, limit, skip } = getPaginationParams(pagination);
+
     const customer = await this.prismaService.customerCompany.findUnique({
       where: {
         companyId,
@@ -179,67 +182,88 @@ export class OrdersService {
       throw new HttpException(
         {
           status: HttpStatus.NOT_FOUND,
-          title: 'Клиент не найден',
-          detail: 'Не удалось найти клиента',
+          title: "Клиент не найден",
+          detail: "Не удалось найти клиента",
+          meta: { customer_id: customerId },
         },
         HttpStatus.NOT_FOUND,
       );
 
-    const orders = await this.prismaService.order.findMany({
-      where: {
-        companyId,
-      },
-      select: {
-        id: true,
-        status: true,
-        subtotal: true,
-        total: true,
-        tag: true,
-        paymentMethod: true,
-        paidAt: true,
-        comment: true,
-        discount: true,
-        bookings: {
-          select: {
-            id: true,
-            status: true,
-            tag: true,
-            comment: true,
-            services: {
-              select: {
-                id: true,
-                unitPrice: true,
-                startTime: true,
-                endTime: true,
-                duration: true,
-                count: true,
-                service: {
-                  select: {
-                    id: true,
-                    name: true,
-                    avatar: true,
-                    mark: true,
-                    price: { select: { price: true, costPrice: true } },
-                    duration: true,
+    const where: Prisma.OrderWhereInput = {
+      ...(status && { status }),
+      companyId,
+      bookings: { some: { companyId } },
+    };
+
+    const orderBy: Prisma.OrderOrderByWithRelationInput =
+      sort === OrderSortOrder.OLDEST
+        ? { createdAt: "asc" }
+        : sort === OrderSortOrder.PRICE_ASC
+          ? { total: "asc" }
+          : sort === OrderSortOrder.PRICE_DESC
+            ? { total: "desc" }
+            : { createdAt: "desc" };
+
+    const [orders, total] = await Promise.all([
+      this.prismaService.order.findMany({
+        where,
+        select: {
+          id: true,
+          status: true,
+          subtotal: true,
+          total: true,
+          tag: true,
+          paymentMethod: true,
+          paidAt: true,
+          comment: true,
+          discount: true,
+          bookings: {
+            where: { customerId: customer.customerId },
+            select: {
+              id: true,
+              status: true,
+              tag: true,
+              comment: true,
+              services: {
+                select: {
+                  id: true,
+                  unitPrice: true,
+                  startTime: true,
+                  endTime: true,
+                  duration: true,
+                  count: true,
+                  service: {
+                    select: {
+                      id: true,
+                      name: true,
+                      avatar: true,
+                      mark: true,
+                      price: { select: { price: true, costPrice: true } },
+                      duration: true,
+                    },
                   },
-                },
-                employee: {
-                  select: {
-                    id: true,
-                    firstName: true,
-                    lastName: true,
-                    phone: true,
-                    avatar: true,
+                  employee: {
+                    select: {
+                      id: true,
+                      firstName: true,
+                      lastName: true,
+                      phone: true,
+                      avatar: true,
+                    },
                   },
                 },
               },
             },
           },
         },
-      },
-    });
+        orderBy,
+        skip,
+        take: limit,
+      }),
+      this.prismaService.order.count({ where }),
+    ]);
 
-    return orders.map((order) => ({
+    const data = orders.map((order) => ({
       id: order.id,
       status: order.status,
       subtotal: order.subtotal,
@@ -253,43 +277,45 @@ export class OrdersService {
       /*
         !!!!! ПОФИКСИТЬ ОШИБКУ  !!!!!
       */
-      // bookings: order.bookings.map((booking) => ({
-      //   id: booking.id,
-      //   status: booking.status,
-      //   tag: booking.tag,
-      //   comment: booking.comment,
-      //   booking_services: booking.services.map((service) => ({
-      //     booking_service_id: service.id,
-      //     booking_service_start_time: service.startTime,
-      //     booking_service_end_time: service.endTime,
-      //     booking_service_duration: service.duration,
-      //     booking_service_price: service.unitPrice,
-      //     booking_service_count: service.count,
-      //     service: {
-      //       service_id: service.service.id,
-      //       name: service.service.name,
-      //       mark: service.service.mark,
-      //       duration: service.service.duration,
-      //       avatar: buildFileUrl(service.service.avatar),
-      //       prices: {
-      //         price: service.service.price?.price,
-      //         cost_price: service.service.price?.costPrice,
-      //       },
-      //     },
-      //     user: {
-      //       user_id: service.employee.id,
-      //       first_name: service.employee.firstName,
-      //       last_name: service.employee.lastName,
-      //       full_name: getFullName(
-      //         service.employee.firstName,
-      //         service.employee.lastName,
-      //       ),
-      //       phone: service.employee.phone,
-      //       avatar: buildFileUrl(service.employee.avatar),
-      //     },
-      //   })),
-      // })),
+      bookings: order.bookings.map((booking) => ({
+        id: booking.id,
+        status: booking.status,
+        tag: booking.tag,
+        comment: booking.comment,
+        booking_services: booking.services.map((service) => ({
+          booking_service_id: service.id,
+          booking_service_start_time: service.startTime,
+          booking_service_end_time: service.endTime,
+          booking_service_duration: service.duration,
+          booking_service_price: service.unitPrice,
+          booking_service_count: service.count,
+          service: {
+            service_id: service.service.id,
+            name: service.service.name,
+            mark: service.service.mark,
+            duration: service.service.duration,
+            avatar: buildFileUrl(service.service.avatar),
+            prices: {
+              price: service.service.price?.price,
+              cost_price: service.service.price?.costPrice,
+            },
+          },
+          user: {
+            user_id: service.employee.id,
+            first_name: service.employee.firstName,
+            last_name: service.employee.lastName,
+            full_name: getFullName(
+              service.employee.firstName,
+              service.employee.lastName,
+            ),
+            phone: service.employee.phone,
+            avatar: buildFileUrl(service.employee.avatar),
+          },
+        })),
+      })),
     }));
+
+    return buildPaginatedResponse(data, total, page, limit);
   }
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -361,8 +387,8 @@ export class OrdersService {
       throw new HttpException(
         {
           status: HttpStatus.NOT_FOUND,
-          title: 'Ошибка',
-          detail: 'Заказ не найден.',
+          title: "Ошибка",
+          detail: "Заказ не найден.",
           meta: { order_id: orderId },
         },
         HttpStatus.NOT_FOUND,
