@@ -237,6 +237,7 @@ export class OrdersService {
                       name: true,
                       avatar: true,
                       mark: true,
+                      category: true,
                       price: { select: { price: true, costPrice: true } },
                       duration: true,
                     },
@@ -294,6 +295,7 @@ export class OrdersService {
             mark: service.service.mark,
             duration: service.service.duration,
             avatar: buildFileUrl(service.service.avatar),
+            category: service.service.category,
             prices: {
               price: service.service.price?.price,
               cost_price: service.service.price?.costPrice,
@@ -350,6 +352,7 @@ export class OrdersService {
                     name: true,
                     avatar: true,
                     mark: true,
+                    category: true,
                     price: { select: { price: true, costPrice: true } },
                     duration: true,
                   },
@@ -434,6 +437,7 @@ export class OrdersService {
             mark: service.service.mark,
             duration: service.service.duration,
             avatar: buildFileUrl(service.service.avatar),
+            category: service.service.category,
             prices: {
               price: service.service.price?.price,
               cost_price: service.service.price?.costPrice,
