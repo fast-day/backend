@@ -225,10 +225,16 @@ model User {
 
   locations     UserLocation[] @relation("user_location")
   services      UserService[]  @relation("user_service")
-  bookings      Booking[]      @relation("booking_employee")
+
+  // В БУДУЩЕМ УБРАТЬ
+  // bookings      Booking[]      @relation("booking_employee")
+  
   settings      Settings?      @relation("user_setting")
   onboardingProgress           OnboardingProgress?      @relation("user_onboarding_progress")
   notes         CustomerNote[] @relation("note_author")
+  
+  
+  bookings      BookingService[]                        @relation("booking_employee")
 
   sessions      Session[]     @relation("user_session")
 
@@ -736,9 +742,12 @@ model Booking {
 
   publicCode    Int           @unique           @default(autoincrement())       @map("public_code")
 
-  startTime     String        @map("start_time")
-  endTime       String        @map("end_time")
-  date          DateTime      @db.Date
+  // УБРААТЬ start_time, end_time & date
+  // startTime     String?       @map("start_time")
+  // endTime       String?       @map("end_time")
+  // date          DateTime?     @db.Date
+  //
+
   comment       String?
   status        BookingStatus @default(confirmed)
   tag           String?       @unique
@@ -757,8 +766,9 @@ model Booking {
   services      BookingService[]                @relation("booking_services")
   notes         CustomerNote[]                  @relation("note_booking")
 
-  employee      User          @relation("booking_employee", fields: [employeeId], references: [id])
-  employeeId    String
+  // УБИРАЕМ СОТРУДНИКА - ПЕРЕНОС В BOOKING_SERVICE
+  // employee      User          @relation("booking_employee", fields: [employeeId], references: [id])
+  // employeeId    String
 
   order         Order?        @relation("booking_order", fields: [orderId], references: [id])
   orderId       String?
@@ -777,9 +787,12 @@ model Booking {
 model BookingService {
   id            String        @id               @default(uuid())
   
-  // price         Decimal       @db.Decimal(10, 2)
-  price         Int?
+  unitPrice     Int?          @map("unit_price")
   duration      Int?
+
+  startTime     DateTime      @map("start_time")
+  endTime       DateTime      @map("end_time")
+  // date          DateTime      @db.Date
 
   count         Int           @default(1)
 
@@ -789,10 +802,12 @@ model BookingService {
   service       Service       @relation("booking_service", fields: [serviceId], references: [id])
   serviceId     String
 
+  employee      User          @relation("booking_employee", fields: [employeeId], references: [id], onDelete: Restrict)
+  employeeId    String        @map("employee_id")
+
   createdAt     DateTime      @default(now())   @map("created_at")
 
-  @@unique([bookingId, serviceId])
-  @@index([serviceId])
+  @@index([serviceId, employeeId])
   @@map("booking_services")
 }
 
@@ -848,8 +863,8 @@ model Schedule {
 model ScheduleInterval {
   id            Int           @id               @default(autoincrement())
 
-  start         String
-  end           String
+  start         DateTime      @db.Time
+  end           DateTime      @db.Time
 
   schedule      Schedule      @relation("schedule_intervals_model", fields: [scheduleId], references: [id], onDelete: Cascade)
   scheduleId    Int           @map("schedule_id")

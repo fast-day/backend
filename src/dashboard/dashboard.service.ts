@@ -98,12 +98,14 @@ export class DashboardService {
         ...bookingFilter,
         orderId: { not: null },
       },
-      select: { orderId: true, date: true },
+      select: { orderId: true },
       distinct: ["orderId"],
     });
 
-    const filtered = bookings.filter((b) =>
-      this.isDateInRange(b.date, dateStart, dateEnd),
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const filtered = bookings.filter((_b) =>
+      // this.isDateInRange(b.date ?? new Date(), dateStart, dateEnd),
+      this.isDateInRange(new Date(), dateStart, dateEnd),
     );
     const orderIds = filtered.map((b) => b.orderId).filter(Boolean) as string[];
 
@@ -151,7 +153,8 @@ export class DashboardService {
     dateStart: Date,
     dateEnd: Date,
   ): Promise<number> {
-    const dateStartStr = dateStart.toISOString().split("T")[0];
+    // const dateStartStr = dateStart.toISOString().split("T")[0];
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const dateEndStr = dateEnd.toISOString().split("T")[0];
 
     if (locationId) {
@@ -159,7 +162,7 @@ export class DashboardService {
         where: {
           companyId,
           locationId,
-          date: { gte: dateStartStr, lte: dateEndStr },
+          // date: { gte: dateStartStr, lte: dateEndStr },
         },
         select: { customerId: true },
         distinct: ["customerId"],
@@ -173,7 +176,6 @@ export class DashboardService {
           companyId,
           locationId,
           customerId: { in: customerIds },
-          date: { lt: dateStartStr },
         },
         select: { customerId: true },
         distinct: ["customerId"],
@@ -235,17 +237,17 @@ export class DashboardService {
         ...(locationId ? { locationId } : {}),
         status: "completed",
         orderId: { not: null },
-        date: {
-          gte: from ? new Date(from) : undefined,
-          lte: to ? new Date(to) : undefined,
-        },
+        // date: {
+        //   gte: from ? new Date(from) : undefined,
+        //   lte: to ? new Date(to) : undefined,
+        // },
         order: {
           status: "paid",
         },
       },
       select: {
-        date: true,
-        startTime: true,
+        // date: true,
+        // startTime: true,
         order: {
           select: {
             total: true,
@@ -253,13 +255,18 @@ export class DashboardService {
           },
         },
       },
-      orderBy: {
-        date: "asc",
-      },
+      // orderBy: {
+      //   date: "asc",
+      // },
     });
 
+    /*
+    
+      !!!!!! ПОДРАВИТЬ ДАННЫЕ !!!!!!    
+    */
     return bookings.map((b) => ({
-      date: `${b.date.getFullYear()}-${String(b.date.getMonth() + 1).padStart(2, "0")}-${String(b.date.getDate()).padStart(2, "0")} ${b.startTime}`,
+      // date: `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, "0")}-${String(new Date().getDate()).padStart(2, "0")} ${b.startTime}`,
+      date: `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, "0")}-${String(new Date().getDate()).padStart(2, "0")}`,
       profit: b.order?.total ?? b.order?.subtotal,
     }));
   }

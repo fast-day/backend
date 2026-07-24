@@ -5,11 +5,11 @@ import {
   IsArray,
   IsDateString,
   IsEnum,
+  IsISO8601,
   IsNumber,
   IsOptional,
   IsString,
   IsUUID,
-  Matches,
   ValidateNested,
 } from "class-validator";
 
@@ -61,25 +61,19 @@ export class BookingBaseDto {
   // name!: string;
 
   @ApiProperty({
-    example: "10:00",
-    description: "Время начала в формате HH:mm",
+    example: "2026-07-22T10:00",
+    description: "Дата и время начала в формате ISO 8601",
     required: true,
-    pattern: "^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$",
   })
-  @Matches(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, {
-    message: "Время должно быть в формате HH:mm",
-  })
+  @IsISO8601()
   start_time!: string;
 
   @ApiProperty({
-    example: "12:45",
-    description: "Время окончания в формате HH:mm",
+    example: "2026-07-22T10:00",
+    description: "Дата и время начала в формате ISO 8601",
     required: true,
-    pattern: "^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$",
   })
-  @Matches(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, {
-    message: "Время должно быть в формате HH:mm",
-  })
+  @IsISO8601()
   end_time!: string;
 
   @ApiProperty({

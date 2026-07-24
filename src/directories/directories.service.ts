@@ -123,6 +123,17 @@ export class DirectoriesService {
             phone: true,
             email: true,
             avatar: true,
+            bookings: {
+              select: {
+                order: {
+                  where: { status: "paid" },
+                  select: {
+                    total: true,
+                    subtotal: true,
+                  },
+                },
+              },
+            },
             _count: {
               select: {
                 bookings: { where: { companyId } },
@@ -135,18 +146,25 @@ export class DirectoriesService {
 
     return customers.map((customer) => ({
       id: customer.id,
-      profile_id: customer.customer.id,
-      first_name: customer.customer.firstName,
-      last_name: customer.customer.lastName,
-      full_name: getFullName(
-        customer.customer.firstName,
-        customer.customer.lastName,
-      ),
-      birthday: customer.customer.birthday,
-      phone: customer.customer.phone,
-      email: customer.customer.email,
-      avatar: buildFileUrl(customer.customer.avatar),
+      customer_attributes: {
+        profile_id: customer.customer.id,
+        first_name: customer.customer.firstName,
+        last_name: customer.customer.lastName,
+        full_name: getFullName(
+          customer.customer.firstName,
+          customer.customer.lastName,
+        ),
+        birthday: customer.customer.birthday,
+        phone: customer.customer.phone,
+        email: customer.customer.email,
+        avatar: buildFileUrl(customer.customer.avatar),
+      },
+      visit_total: customer.customer.bookings.map((book) => book.order).length,
       bookings_count: customer.customer._count.bookings,
+      bookings_total: customer.customer.bookings.reduce(
+        (sum, booking) => sum + Number(booking.order?.total),
+        0,
+      ),
     }));
   }
 
@@ -346,15 +364,15 @@ export class DirectoriesService {
 
     const bookings = await this.PrismaService.booking.findMany({
       where: {
-        employeeId: userId,
-        date: new Date(date),
+        // employeeId: userId,
+        // date: new Date(date),
         status: { not: "cancelled" },
       },
-      select: {
-        date: true,
-        startTime: true,
-        endTime: true,
-      },
+      // select: {
+      //   date: true,
+      //   startTime: true,
+      //   endTime: true,
+      // },
     });
 
     function timeToMinutes(time: string) {
@@ -376,9 +394,16 @@ export class DirectoriesService {
     }
 
     function hasOverlap(start: number, end: number) {
-      return bookings.some((booking) => {
-        const bookingStart = timeToMinutes(booking.startTime);
-        const bookingEnd = timeToMinutes(booking.endTime);
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      return bookings.some((_booking) => {
+        /*
+          !!!!! ПОДПРАВИТЬ ДАННЫЕ !!!!!
+        */
+        // const bookingStart = timeToMinutes(booking.startTime ?? "10:00");
+        const bookingStart = timeToMinutes("10:00");
+
+        // const bookingEnd = timeToMinutes(booking.endTime ?? "12:00");
+        const bookingEnd = timeToMinutes("12:00");
 
         console.log("bookingStart", bookingStart, "bookingEnd", bookingEnd);
 
@@ -389,9 +414,10 @@ export class DirectoriesService {
     const slots: string[] = [];
 
     for (const schedule of user.schedules) {
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       for (const interval of schedule.intervals) {
-        const intervalStart = timeToMinutes(interval.start);
-        const intervalEnd = timeToMinutes(interval.end);
+        const intervalStart = timeToMinutes("interval.start");
+        const intervalEnd = timeToMinutes("interval.end");
 
         for (
           let current = intervalStart;

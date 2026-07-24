@@ -31,10 +31,10 @@ export class GetBookingsDto extends GetQueryDto {
   // @IsString()
   // employee_phone?: string;
 
-  @ApiProperty({ required: false })
-  @IsOptional()
-  @IsString()
-  service?: string;
+  // @ApiProperty({ required: false })
+  // @IsOptional()
+  // @IsString()
+  // service?: string;
 
   @ApiProperty({ required: false })
   @IsOptional()

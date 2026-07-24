@@ -28,8 +28,8 @@ import { MailModule } from "./mail/mail.module";
 import { SmsModule } from "./sms/sms.module";
 import { DashboardModule } from "./dashboard/dashboard.module";
 import { SettingsModule } from "./settings/settings.module";
-import { OnboardingModule } from './onboarding/onboarding.module';
-import { CustomerDocumentsModule } from './customer_documents/customer_documents.module';
+import { OnboardingModule } from "./onboarding/onboarding.module";
+import { CustomerDocumentsModule } from "./customer_documents/customer_documents.module";
 
 @Module({
   imports: [
