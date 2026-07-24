@@ -4,7 +4,6 @@ import {
   BookingCreateDto,
   BookingCreateServiceDto,
 } from "./dto/booking-create.dto";
-// import { IBookingDetails } from "./type/bookings.type";
 import { BookingStatusDto } from "./dto/booking-status.dto";
 import { BookingUpdateDto } from "./dto/booking-update.dto";
 import { Prisma } from "@prisma/client";
@@ -27,6 +26,7 @@ import {
   combineDateAndTime,
   parseNaiveDateTime,
 } from "src/shared/utils/combine-date-and-time.util";
+import { getDayRange } from "./utils/day-range.util";
 
 @Injectable()
 export class BookingsService {
@@ -475,7 +475,7 @@ export class BookingsService {
   }
 
   async getAll(userId: string, locationId: string, query: GetBookingsDto) {
-    const { customer, status, tag, sort, ...pagination } = query;
+    const { customer, status, date, tag, sort, ...pagination } = query;
     const { page, limit, skip } = getPaginationParams(pagination);
 
     const user = await this.prismaService.userLocation.findUnique({
@@ -497,15 +497,20 @@ export class BookingsService {
     const isOwner = user.role?.name === "owner";
     // const serviceWhere = buildEmployeeScopeFilter(false, userId);
 
+    const serviceFilter: Prisma.BookingServiceWhereInput = {
+      ...(!isOwner && { employeeId: userId }),
+      ...(date && { startTime: getDayRange(date) }),
+    };
+
     const where: Prisma.BookingWhereInput = {
       locationId,
-      ...(!isOwner && { employeeId: userId }),
       ...(status && { status }),
-      // ...(date && { date: new Date(date) }),
       ...(tag && {
         tag: { contains: tag, mode: Prisma.QueryMode.insensitive },
       }),
-      // ...(serviceWhere && serviceWhere),
+      ...(Object.keys(serviceFilter).length > 0 && {
+        services: { some: serviceFilter },
+      }),
       ...(customer && {
         customer: {
           OR: [

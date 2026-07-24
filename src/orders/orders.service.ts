@@ -1,4 +1,3 @@
-/* eslint-disable prettier/prettier */
 import { HttpException, HttpStatus, Injectable } from "@nestjs/common";
 import { PrismaService } from "src/prisma/prisma.service";
 import { OrderCreateDto } from "./dto/order-create.dto";
@@ -318,10 +317,9 @@ export class OrdersService {
     return buildPaginatedResponse(data, total, page, limit);
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   async details(orderId: string, companyId: string) {
     const order = await this.prismaService.order.findFirst({
-      where: { id: orderId },
+      where: { id: orderId, companyId },
       select: {
         id: true,
         status: true,
@@ -393,24 +391,6 @@ export class OrdersService {
         },
         HttpStatus.NOT_FOUND,
       );
-
-    /*
-      ===== В БУДУЩЕМ ПОМЕНЯТЬ КОНЦЕПЦИЮ - А ПОКА РАБОТАЕТ ТАК =====
-    */
-    /*
-      !!!!! ПОФИКСИТЬ ОШИБКУ  !!!!!
-    */
-    // const customerCompany = await this.prismaService.customerCompany.findUnique(
-    //   {
-    //     where: {
-    //       customerId_companyId: {
-    //         customerId: order.bookings[0].customer.id,
-    //         companyId,
-    //       },
-    //     },
-    //     select: { id: true },
-    //   },
-    // );
 
     return {
       id: order.id,
