@@ -323,16 +323,18 @@ export class DirectoriesService {
     date: string,
     duration: number,
   ) {
+    const targetDate = new Date(`${date}T00:00:00.000Z`);
+
     const user = await this.PrismaService.userLocation.findFirst({
       where: {
         userId,
         locationId,
-        schedules: { some: { date: new Date(date) } },
+        schedules: { some: { date: targetDate } },
       },
       select: {
         id: true,
         schedules: {
-          where: { date: new Date(date) },
+          where: { date: targetDate },
           select: {
             id: true,
             date: true,
@@ -362,74 +364,59 @@ export class DirectoriesService {
         HttpStatus.NOT_FOUND,
       );
 
-    const bookings = await this.PrismaService.booking.findMany({
+    const dayStart = targetDate;
+    const dayEnd = new Date(dayStart);
+    dayEnd.setUTCDate(dayEnd.getUTCDate() + 1);
+
+    const bookings = await this.PrismaService.bookingService.findMany({
       where: {
-        // employeeId: userId,
-        // date: new Date(date),
-        status: { not: "cancelled" },
+        employeeId: userId,
+        startTime: { gte: dayStart, lt: dayEnd },
+        booking: { status: { not: "cancelled" } },
       },
-      // select: {
-      //   date: true,
-      //   startTime: true,
-      //   endTime: true,
-      // },
+      select: { startTime: true, endTime: true },
     });
 
-    function timeToMinutes(time: string) {
-      const [hours, minutes] = time.split(":").map(Number);
-
-      return hours * 60 + minutes;
+    function timeToMinutes(time: Date): number {
+      return time.getUTCHours() * 60 + time.getUTCMinutes();
     }
 
-    function minutesToTime(minutes: number) {
+    function dateTimeToMinutes(date_time: Date): number {
+      return date_time.getUTCHours() * 60 + date_time.getUTCMinutes();
+    }
+
+    function minutesToTime(minutes: number): string {
       const hours = Math.floor(minutes / 60)
         .toString()
         .padStart(2, "0");
-
       const mins = (minutes % 60).toString().padStart(2, "0");
-
-      console.log("{hours}{mins}", `${hours}:${mins}`);
-
       return `${hours}:${mins}`;
     }
 
-    function hasOverlap(start: number, end: number) {
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      return bookings.some((_booking) => {
-        /*
-          !!!!! ПОДПРАВИТЬ ДАННЫЕ !!!!!
-        */
-        // const bookingStart = timeToMinutes(booking.startTime ?? "10:00");
-        const bookingStart = timeToMinutes("10:00");
-
-        // const bookingEnd = timeToMinutes(booking.endTime ?? "12:00");
-        const bookingEnd = timeToMinutes("12:00");
-
-        console.log("bookingStart", bookingStart, "bookingEnd", bookingEnd);
-
-        return start < bookingEnd && end > bookingStart;
+    function hasOverlap(start: number, end: number): boolean {
+      return bookings.some((service) => {
+        const book_start = dateTimeToMinutes(service.startTime);
+        const book_end = dateTimeToMinutes(service.endTime);
+        return start < book_end && end > book_start;
       });
     }
 
     const slots: string[] = [];
 
     for (const schedule of user.schedules) {
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       for (const interval of schedule.intervals) {
-        const intervalStart = timeToMinutes("interval.start");
-        const intervalEnd = timeToMinutes("interval.end");
+        const interval_start = timeToMinutes(interval.start);
+        const interval_end = timeToMinutes(interval.end);
 
         for (
-          let current = intervalStart;
-          current + duration <= intervalEnd;
-          current += duration
+          let c = interval_start;
+          c + duration <= interval_end;
+          c += duration
         ) {
-          const start = current;
-          const end = current + duration;
+          const start = c;
+          const end = c + duration;
 
-          const busy = hasOverlap(start, end);
-
-          if (!busy) {
+          if (!hasOverlap(start, end)) {
             slots.push(minutesToTime(start));
           }
         }
