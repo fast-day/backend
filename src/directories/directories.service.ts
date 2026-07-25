@@ -1,7 +1,10 @@
 import { HttpException, HttpStatus, Injectable } from "@nestjs/common";
 import { PrismaService } from "src/prisma/prisma.service";
 import { buildFileUrl } from "src/shared/utils/build-url";
+import { formatIntervalTime } from "src/shared/utils/format-time.util";
 import { getFullName } from "src/shared/utils/get-full-name.util";
+import { minutesToUtcDate } from "./utils/format-minutes.util";
+import { DEFAULT_TIMEZONE } from "src/shared/constant/timezone.constant";
 
 @Injectable()
 export class DirectoriesService {
@@ -333,6 +336,7 @@ export class DirectoriesService {
       },
       select: {
         id: true,
+        location: { select: { address: { select: { timezone: true } } } },
         schedules: {
           where: { date: targetDate },
           select: {
@@ -364,6 +368,7 @@ export class DirectoriesService {
         HttpStatus.NOT_FOUND,
       );
 
+    const timezone = user.location.address?.timezone ?? DEFAULT_TIMEZONE;
     const dayStart = targetDate;
     const dayEnd = new Date(dayStart);
     dayEnd.setUTCDate(dayEnd.getUTCDate() + 1);
@@ -383,14 +388,6 @@ export class DirectoriesService {
 
     function dateTimeToMinutes(date_time: Date): number {
       return date_time.getUTCHours() * 60 + date_time.getUTCMinutes();
-    }
-
-    function minutesToTime(minutes: number): string {
-      const hours = Math.floor(minutes / 60)
-        .toString()
-        .padStart(2, "0");
-      const mins = (minutes % 60).toString().padStart(2, "0");
-      return `${hours}:${mins}`;
     }
 
     function hasOverlap(start: number, end: number): boolean {
@@ -417,7 +414,7 @@ export class DirectoriesService {
           const end = c + duration;
 
           if (!hasOverlap(start, end)) {
-            slots.push(minutesToTime(start));
+            slots.push(formatIntervalTime(minutesToUtcDate(start), timezone));
           }
         }
       }

@@ -449,6 +449,12 @@ model Company {
   industry      Industry?     @relation("company_industry", fields: [industryId], references: [id])
   industryId    Int?          @map("industry_id")
 
+  hasCustomers  Boolean       @default(false)   @map("has_customers")
+  hasEmployees  Boolean       @default(false)   @map("has_employees")
+  hasBookings   Boolean       @default(false)   @map("has_bookings")
+  hasOrders     Boolean       @default(false)   @map("has_orders")
+  hasServices   Boolean       @default(false)   @map("has_services")
+
   services      Service[]     @relation("company_service")
   serviceCategory ServiceCategory[]             @relation("company_service_category")
   

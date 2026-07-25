@@ -3,6 +3,9 @@ import { PrismaService } from "src/prisma/prisma.service";
 import { ScheduleDto } from "./dto/schedule.dto";
 import { UserService } from "src/user/user.service";
 import { getFullName } from "src/shared/utils/get-full-name.util";
+import { fromZonedTime } from "date-fns-tz";
+import { DEFAULT_TIMEZONE } from "src/shared/constant/timezone.constant";
+import { formatIntervalTime } from "src/shared/utils/format-time.util";
 
 @Injectable()
 export class ScheduleService {
@@ -11,27 +14,46 @@ export class ScheduleService {
     private readonly userService: UserService,
   ) {}
 
-  async create(dto: ScheduleDto, locationId: string) {
-    const { user_id: userId } = dto;
-
+  private async getUserLocationWithTimezone(
+    userId: string,
+    locationId: string,
+  ): Promise<{ userLocationId: string; timezone: string }> {
     const user = await this.prismaService.userLocation.findUnique({
       where: { userId_locationId: { userId, locationId } },
-      select: { id: true },
+      select: {
+        id: true,
+        location: { select: { address: { select: { timezone: true } } } },
+      },
     });
 
-    if (!user)
+    if (!user) {
       throw new HttpException(
         {
           title: "Ошибка",
           description: "Пользователь не найден",
-          detail: [`ID ${userId}`],
+          detail: `user_id ${userId}`,
           status: HttpStatus.NOT_FOUND,
         },
         HttpStatus.NOT_FOUND,
       );
+    }
+
+    return {
+      userLocationId: user.id,
+      timezone: user.location.address?.timezone ?? DEFAULT_TIMEZONE,
+    };
+  }
+
+  async create(dto: ScheduleDto, locationId: string) {
+    const { user_id: userId } = dto;
+
+    const { userLocationId, timezone } = await this.getUserLocationWithTimezone(
+      userId,
+      locationId,
+    );
 
     const isExist = await this.prismaService.schedule.findFirst({
-      where: { date: new Date(dto.date), userLocationId: user.id },
+      where: { date: new Date(dto.date), userLocationId },
     });
 
     if (isExist)
@@ -41,7 +63,7 @@ export class ScheduleService {
           title: "Ошибка создания расписания",
           detail:
             "У выбранного сотрудника уже существует расписание на выбранную дату.",
-          meta: { employee_id: user.id },
+          meta: { employee_id: userLocationId },
         },
         HttpStatus.BAD_REQUEST,
       );
@@ -50,7 +72,7 @@ export class ScheduleService {
       const sch = await t.schedule.create({
         data: {
           date: new Date(dto.date),
-          userLocation: { connect: { id: user.id } },
+          userLocation: { connect: { id: userLocationId } },
         },
         select: {
           id: true,
@@ -60,12 +82,28 @@ export class ScheduleService {
 
       const intervals = await t.scheduleInterval.createManyAndReturn({
         data: dto.intervals.map((i) => {
-          const [hours, minutes] = i.start.split("T")[1].split(":");
-          const [endHours, endMinutes] = i.end.split("T")[1].split(":");
+          const start_utc = fromZonedTime(i.start, timezone);
+          const end_utc = fromZonedTime(i.end, timezone);
 
           return {
-            start: new Date(Date.UTC(1970, 0, 1, +hours, +minutes)),
-            end: new Date(Date.UTC(1970, 0, 1, +endHours, +endMinutes)),
+            start: new Date(
+              Date.UTC(
+                1970,
+                0,
+                1,
+                start_utc.getUTCHours(),
+                start_utc.getUTCMinutes(),
+              ),
+            ),
+            end: new Date(
+              Date.UTC(
+                1970,
+                0,
+                1,
+                end_utc.getUTCHours(),
+                end_utc.getUTCMinutes(),
+              ),
+            ),
             scheduleId: sch.id,
           };
         }),
@@ -77,6 +115,10 @@ export class ScheduleService {
 
     return {
       ...schedule,
+      intervals: schedule.intervals.map((interval) => ({
+        start: formatIntervalTime(interval.start, timezone),
+        end: formatIntervalTime(interval.end, timezone),
+      })),
       date: schedule.date.toISOString().split("T")[0],
     };
   }
@@ -87,7 +129,10 @@ export class ScheduleService {
     month?: string,
     year?: string,
   ) {
-    await this.userService.findByIdOptional(userId);
+    const { timezone } = await this.getUserLocationWithTimezone(
+      userId,
+      locationId,
+    );
 
     if (!month || !year) {
       const now = new Date();
@@ -100,8 +145,8 @@ export class ScheduleService {
       where: {
         userLocation: { userId, locationId },
         date: {
-          gte: new Date(Number(year), Number(month) - 1, 1),
-          lt: new Date(Number(year), Number(month), 1),
+          gte: new Date(Date.UTC(Number(year), Number(month) - 1, 1)),
+          lt: new Date(Date.UTC(Number(year), Number(month), 1)),
         },
       },
       select: {
@@ -115,7 +160,10 @@ export class ScheduleService {
     return schedule.map((schedule) => ({
       id: schedule.id,
       date: schedule.date.toISOString().split("T")[0],
-      intervals: schedule.intervals,
+      intervals: schedule.intervals.map((interval) => ({
+        start: formatIntervalTime(interval.start, timezone),
+        end: formatIntervalTime(interval.end, timezone),
+      })),
     }));
   }
 
@@ -132,24 +180,13 @@ export class ScheduleService {
         HttpStatus.NOT_FOUND,
       );
 
-    const user = await this.prismaService.userLocation.findUnique({
-      where: { userId_locationId: { userId, locationId } },
-      select: { id: true },
-    });
-
-    if (!user)
-      throw new HttpException(
-        {
-          title: "Ошибка",
-          description: "Пользователь не найден",
-          detail: `user_id ${userId}`,
-          status: HttpStatus.NOT_FOUND,
-        },
-        HttpStatus.NOT_FOUND,
-      );
+    const { userLocationId, timezone } = await this.getUserLocationWithTimezone(
+      userId,
+      locationId,
+    );
 
     const isExist = await this.prismaService.schedule.findFirst({
-      where: { id: scheduleId, userLocationId: user.id },
+      where: { id: scheduleId, userLocationId },
     });
 
     if (!isExist)
@@ -167,7 +204,7 @@ export class ScheduleService {
         where: { id: scheduleId },
         data: {
           date: new Date(dto.date),
-          userLocation: { connect: { id: user.id } },
+          userLocation: { connect: { id: userLocationId } },
         },
         select: { id: true },
       });
@@ -178,12 +215,28 @@ export class ScheduleService {
 
       await t.scheduleInterval.createMany({
         data: dto.intervals.map((i) => {
-          const [hours, minutes] = i.start.split("T")[1].split(":");
-          const [endHours, endMinutes] = i.end.split("T")[1].split(":");
+          const start_utc = fromZonedTime(i.start, timezone);
+          const end_utc = fromZonedTime(i.end, timezone);
 
           return {
-            start: new Date(Date.UTC(1970, 0, 1, +hours, +minutes)),
-            end: new Date(Date.UTC(1970, 0, 1, +endHours, +endMinutes)),
+            start: new Date(
+              Date.UTC(
+                1970,
+                0,
+                1,
+                start_utc.getUTCHours(),
+                start_utc.getUTCMinutes(),
+              ),
+            ),
+            end: new Date(
+              Date.UTC(
+                1970,
+                0,
+                1,
+                end_utc.getUTCHours(),
+                end_utc.getUTCMinutes(),
+              ),
+            ),
             scheduleId: sch.id,
           };
         }),
@@ -219,7 +272,10 @@ export class ScheduleService {
     const res = {
       id: schedule!.id,
       date: schedule!.date.toISOString().split("T")[0],
-      intervals: schedule!.intervals,
+      intervals: schedule!.intervals.map((interval) => ({
+        start: formatIntervalTime(interval.start, timezone),
+        end: formatIntervalTime(interval.end, timezone),
+      })),
       location_id: schedule!.userLocation.locationId,
       user: {
         id: schedule!.userLocation.id,
@@ -248,24 +304,13 @@ export class ScheduleService {
         HttpStatus.NOT_FOUND,
       );
 
-    const user = await this.prismaService.userLocation.findUnique({
-      where: { id: userId, locationId },
-      select: { id: true },
-    });
-
-    if (!user)
-      throw new HttpException(
-        {
-          title: "Ошибка",
-          description: "Пользователь не найден",
-          detail: `user_id ${userId}`,
-          status: HttpStatus.NOT_FOUND,
-        },
-        HttpStatus.NOT_FOUND,
-      );
+    const { userLocationId } = await this.getUserLocationWithTimezone(
+      userId,
+      locationId,
+    );
 
     const isExist = await this.prismaService.schedule.findFirst({
-      where: { id: scheduleId, userLocationId: userId },
+      where: { id: scheduleId, userLocationId },
     });
 
     if (!isExist)
@@ -294,24 +339,13 @@ export class ScheduleService {
         HttpStatus.NOT_FOUND,
       );
 
-    const user = await this.prismaService.userLocation.findUnique({
-      where: { id: userId, locationId },
-      select: { id: true },
-    });
-
-    if (!user)
-      throw new HttpException(
-        {
-          title: "Ошибка",
-          description: "Пользователь не найден",
-          detail: `user_id ${userId}`,
-          status: HttpStatus.NOT_FOUND,
-        },
-        HttpStatus.NOT_FOUND,
-      );
+    const { userLocationId, timezone } = await this.getUserLocationWithTimezone(
+      userId,
+      locationId,
+    );
 
     const schedule = await this.prismaService.schedule.findFirst({
-      where: { id: scheduleId, userLocationId: userId },
+      where: { id: scheduleId, userLocationId },
       select: {
         id: true,
         intervals: { select: { start: true, end: true } },
@@ -347,7 +381,10 @@ export class ScheduleService {
     const res = {
       id: schedule.id,
       date: schedule.date.toISOString().split("T")[0],
-      intervals: schedule.intervals,
+      intervals: schedule.intervals.map((interval) => ({
+        start: formatIntervalTime(interval.start, timezone),
+        end: formatIntervalTime(interval.end, timezone),
+      })),
       location_id: schedule.userLocation.locationId,
       user: {
         id: schedule.userLocation.id,

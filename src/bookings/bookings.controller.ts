@@ -106,7 +106,7 @@ export class BookingsController {
     description: "not found",
   })
   @Get("bookings/location/:location_id")
-  @UseGuards(AuthGuard, LoadUserGuard, LocationGuard, ScopeGuard)
+  @UseGuards(AuthGuard, LoadUserGuard, CompanyGuard, LocationGuard, ScopeGuard)
   @Scopes("bookings:read")
   @HttpCode(HttpStatus.OK)
   getAll(
