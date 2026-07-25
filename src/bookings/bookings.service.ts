@@ -983,7 +983,29 @@ export class BookingsService {
             companyId,
           },
         },
-        select: { id: true },
+        select: {
+          id: true,
+          customer: {
+            select: {
+              bookings: {
+                select: {
+                  order: {
+                    where: { status: "paid" },
+                    select: {
+                      total: true,
+                      subtotal: true,
+                    },
+                  },
+                },
+              },
+              _count: {
+                select: {
+                  bookings: { where: { companyId } },
+                },
+              },
+            },
+          },
+        },
       },
     );
 
@@ -1006,17 +1028,27 @@ export class BookingsService {
       },
       customer: {
         id: booking.customer.id,
-        profile_id: customerCompany?.id,
-        first_name: booking.customer.firstName,
-        last_name: booking.customer.lastName,
-        full_name: getFullName(
-          booking.customer.firstName,
-          booking.customer.lastName,
+        customer_attributes: {
+          profile_id: booking.customer.id,
+          first_name: booking.customer.firstName,
+          last_name: booking.customer.lastName,
+          full_name: getFullName(
+            booking.customer.firstName,
+            booking.customer.lastName,
+          ),
+          birthday: booking.customer.birthday,
+          phone: booking.customer.phone,
+          email: booking.customer.email,
+          avatar: buildFileUrl(booking.customer.avatar),
+        },
+        visit_total: customerCompany?.customer.bookings.map(
+          (book) => book.order,
+        ).length,
+        bookings_count: customerCompany?.customer._count.bookings,
+        bookings_total: customerCompany?.customer.bookings.reduce(
+          (sum, booking) => sum + Number(booking.order?.total ?? 0),
+          0,
         ),
-        phone: booking.customer.phone,
-        email: booking.customer.email,
-        birthday: booking.customer.birthday,
-        avatar: buildFileUrl(booking.customer.avatar),
       },
       booking_services: booking.services.map((service) => ({
         booking_service_id: service.id,
