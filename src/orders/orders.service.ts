@@ -10,6 +10,12 @@ import {
 import { GetOrdersDto, OrderSortOrder } from "./dto/get-orders.dto";
 import { getFullName } from "src/shared/utils/get-full-name.util";
 import { buildFileUrl } from "src/shared/utils/build-url";
+import {
+  formatBookingTime,
+  formatDateInTimezone,
+} from "src/bookings/utils/format-time.util";
+import { DEFAULT_TIMEZONE } from "src/shared/constant/timezone.constant";
+import { getBookingTimeRange } from "src/bookings/utils/time-range.util";
 
 @Injectable()
 export class OrdersService {
@@ -72,6 +78,11 @@ export class OrdersService {
         data: { orderId: order.id },
       });
 
+      await this.prismaService.company.update({
+        where: { id: companyId },
+        data: { hasOrders: true },
+      });
+
       return {
         id: order.id,
         tag: order.tag,
@@ -113,9 +124,11 @@ export class OrdersService {
           total: true,
           paymentMethod: true,
           paidAt: true,
+          createdAt: true,
           bookings: {
             select: {
               id: true,
+              location: { select: { address: { select: { timezone: true } } } },
               customer: {
                 select: {
                   id: true,
@@ -135,28 +148,33 @@ export class OrdersService {
       this.prismaService.order.count({ where }),
     ]);
 
-    const data = orders.map((ord) => ({
-      id: ord.id,
-      tag: ord.tag,
-      status: ord.status,
-      subtotal: ord.subtotal,
-      total: ord.total,
-      payment_method: ord.paymentMethod,
-      is_payment: !ord.paidAt,
-      booking_ids: ord.bookings.map((b) => b.id),
-      customer: {
-        id: ord.bookings[0]?.customer.id || null,
-        first_name: ord.bookings[0]?.customer.firstName || null,
-        last_name: ord.bookings[0]?.customer.lastName || null,
-        full_name:
-          getFullName(
-            ord.bookings[0]?.customer.firstName,
-            ord.bookings[0]?.customer.lastName,
-          ) || null,
-        phone: ord.bookings[0]?.customer.phone || null,
-        avatar: buildFileUrl(ord.bookings[0]?.customer.avatar) || null,
-      },
-    }));
+    const data = orders.map((ord) => {
+      const timezone =
+        ord.bookings[0]?.location?.address?.timezone ?? DEFAULT_TIMEZONE;
+      return {
+        id: ord.id,
+        tag: ord.tag,
+        status: ord.status,
+        subtotal: ord.subtotal,
+        total: ord.total,
+        date: formatDateInTimezone(ord.createdAt, timezone),
+        payment_method: ord.paymentMethod,
+        is_payment: !ord.paidAt,
+        booking_ids: ord.bookings.map((b) => b.id),
+        customer: {
+          id: ord.bookings[0]?.customer.id || null,
+          first_name: ord.bookings[0]?.customer.firstName || null,
+          last_name: ord.bookings[0]?.customer.lastName || null,
+          full_name:
+            getFullName(
+              ord.bookings[0]?.customer.firstName,
+              ord.bookings[0]?.customer.lastName,
+            ) || null,
+          phone: ord.bookings[0]?.customer.phone || null,
+          avatar: buildFileUrl(ord.bookings[0]?.customer.avatar) || null,
+        },
+      };
+    });
 
     return buildPaginatedResponse(data, total, page, limit);
   }
@@ -216,10 +234,12 @@ export class OrdersService {
           paidAt: true,
           comment: true,
           discount: true,
+          createdAt: true,
           bookings: {
             where: { customerId: customer.customerId },
             select: {
               id: true,
+              location: { select: { address: { select: { timezone: true } } } },
               status: true,
               tag: true,
               comment: true,
@@ -263,58 +283,72 @@ export class OrdersService {
       this.prismaService.order.count({ where }),
     ]);
 
-    const data = orders.map((order) => ({
-      id: order.id,
-      status: order.status,
-      subtotal: order.subtotal,
-      total: order.total,
-      discount: order.discount,
-      tag: order.tag,
-      payment_method: order.paymentMethod,
-      comment: order.comment,
-      is_payment: !!order.paidAt,
+    const data = orders.map((order) => {
+      const timezone =
+        order.bookings[0]?.location?.address?.timezone ?? DEFAULT_TIMEZONE;
+      return {
+        id: order.id,
+        status: order.status,
+        subtotal: order.subtotal,
+        total: order.total,
+        date: formatDateInTimezone(order.createdAt, timezone),
+        discount: order.discount,
+        tag: order.tag,
+        payment_method: order.paymentMethod,
+        comment: order.comment,
+        is_payment: !!order.paidAt,
 
-      /*
-        !!!!! ПОФИКСИТЬ ОШИБКУ  !!!!!
-      */
-      bookings: order.bookings.map((booking) => ({
-        id: booking.id,
-        status: booking.status,
-        tag: booking.tag,
-        comment: booking.comment,
-        booking_services: booking.services.map((service) => ({
-          booking_service_id: service.id,
-          booking_service_start_time: service.startTime,
-          booking_service_end_time: service.endTime,
-          booking_service_duration: service.duration,
-          booking_service_price: service.unitPrice,
-          booking_service_count: service.count,
-          service: {
-            service_id: service.service.id,
-            name: service.service.name,
-            mark: service.service.mark,
-            duration: service.service.duration,
-            avatar: buildFileUrl(service.service.avatar),
-            category: service.service.category,
-            prices: {
-              price: service.service.price?.price,
-              cost_price: service.service.price?.costPrice,
-            },
-          },
-          user: {
-            user_id: service.employee.id,
-            first_name: service.employee.firstName,
-            last_name: service.employee.lastName,
-            full_name: getFullName(
-              service.employee.firstName,
-              service.employee.lastName,
-            ),
-            phone: service.employee.phone,
-            avatar: buildFileUrl(service.employee.avatar),
-          },
-        })),
-      })),
-    }));
+        bookings: order.bookings.map((booking) => {
+          const { start, end } = getBookingTimeRange(booking.services);
+          return {
+            id: booking.id,
+            status: booking.status,
+            tag: booking.tag,
+            comment: booking.comment,
+            date: formatDateInTimezone(start, timezone),
+            start_time: formatBookingTime(start, timezone),
+            end_time: formatBookingTime(end, timezone),
+            booking_services: booking.services.map((service) => ({
+              booking_service_id: service.id,
+              booking_service_start_time: formatBookingTime(
+                service.startTime,
+                timezone,
+              ),
+              booking_service_end_time: formatBookingTime(
+                service.endTime,
+                timezone,
+              ),
+              booking_service_duration: service.duration,
+              booking_service_price: service.unitPrice,
+              booking_service_count: service.count,
+              service: {
+                service_id: service.service.id,
+                name: service.service.name,
+                mark: service.service.mark,
+                duration: service.service.duration,
+                avatar: buildFileUrl(service.service.avatar),
+                category: service.service.category,
+                prices: {
+                  price: service.service.price?.price,
+                  cost_price: service.service.price?.costPrice,
+                },
+              },
+              user: {
+                user_id: service.employee.id,
+                first_name: service.employee.firstName,
+                last_name: service.employee.lastName,
+                full_name: getFullName(
+                  service.employee.firstName,
+                  service.employee.lastName,
+                ),
+                phone: service.employee.phone,
+                avatar: buildFileUrl(service.employee.avatar),
+              },
+            })),
+          };
+        }),
+      };
+    });
 
     return buildPaginatedResponse(data, total, page, limit);
   }
@@ -332,12 +366,14 @@ export class OrdersService {
         paidAt: true,
         comment: true,
         discount: true,
+        createdAt: true,
         bookings: {
           select: {
             id: true,
             status: true,
             tag: true,
             comment: true,
+            location: { select: { address: { select: { timezone: true } } } },
             services: {
               select: {
                 id: true,
@@ -395,67 +431,84 @@ export class OrdersService {
         HttpStatus.NOT_FOUND,
       );
 
+    const timezone =
+      order.bookings[0]?.location.address?.timezone ?? DEFAULT_TIMEZONE;
+
     return {
       id: order.id,
       status: order.status,
       tag: order.tag,
       subtotal: order.subtotal,
       total: order.total,
+      date: formatDateInTimezone(order.createdAt, timezone),
       payment_method: order.paymentMethod,
       is_payment: !!order.paidAt,
       discount: order.discount,
 
-      bookings: order.bookings.map((booking) => ({
-        id: booking.id,
-        status: booking.status,
-        tag: booking.tag,
-        comment: booking.comment,
-        customer: {
-          id: booking.customer.id,
-          profile_id: null,
-          first_name: booking.customer.firstName,
-          last_name: booking.customer.lastName,
-          full_name: getFullName(
-            booking.customer.firstName,
-            booking.customer.lastName,
-          ),
-          phone: booking.customer.phone,
-          email: booking.customer.email,
-          birthday: booking.customer.birthday,
-          avatar: buildFileUrl(booking.customer.avatar),
-        },
-        booking_services: booking.services.map((service) => ({
-          booking_service_id: service.id,
-          booking_service_start_time: service.startTime,
-          booking_service_end_time: service.endTime,
-          booking_service_duration: service.duration,
-          booking_service_price: service.unitPrice,
-          booking_service_count: service.count,
-          service: {
-            service_id: service.service.id,
-            name: service.service.name,
-            mark: service.service.mark,
-            duration: service.service.duration,
-            avatar: buildFileUrl(service.service.avatar),
-            category: service.service.category,
-            prices: {
-              price: service.service.price?.price,
-              cost_price: service.service.price?.costPrice,
-            },
-          },
-          user: {
-            user_id: service.employee.id,
-            first_name: service.employee.firstName,
-            last_name: service.employee.lastName,
+      bookings: order.bookings.map((booking) => {
+        const { start, end } = getBookingTimeRange(booking.services);
+
+        return {
+          id: booking.id,
+          status: booking.status,
+          tag: booking.tag,
+          comment: booking.comment,
+          date: formatDateInTimezone(start, timezone),
+          start_time: formatBookingTime(start, timezone),
+          end_time: formatBookingTime(end, timezone),
+          customer: {
+            id: booking.customer.id,
+            profile_id: null,
+            first_name: booking.customer.firstName,
+            last_name: booking.customer.lastName,
             full_name: getFullName(
-              service.employee.firstName,
-              service.employee.lastName,
+              booking.customer.firstName,
+              booking.customer.lastName,
             ),
-            phone: service.employee.phone,
-            avatar: buildFileUrl(service.employee.avatar),
+            phone: booking.customer.phone,
+            email: booking.customer.email,
+            birthday: booking.customer.birthday,
+            avatar: buildFileUrl(booking.customer.avatar),
           },
-        })),
-      })),
+          booking_services: booking.services.map((service) => ({
+            booking_service_id: service.id,
+            booking_service_start_time: formatBookingTime(
+              service.startTime,
+              timezone,
+            ),
+            booking_service_end_time: formatBookingTime(
+              service.endTime,
+              timezone,
+            ),
+            booking_service_duration: service.duration,
+            booking_service_price: service.unitPrice,
+            booking_service_count: service.count,
+            service: {
+              service_id: service.service.id,
+              name: service.service.name,
+              mark: service.service.mark,
+              duration: service.service.duration,
+              avatar: buildFileUrl(service.service.avatar),
+              category: service.service.category,
+              prices: {
+                price: service.service.price?.price,
+                cost_price: service.service.price?.costPrice,
+              },
+            },
+            user: {
+              user_id: service.employee.id,
+              first_name: service.employee.firstName,
+              last_name: service.employee.lastName,
+              full_name: getFullName(
+                service.employee.firstName,
+                service.employee.lastName,
+              ),
+              phone: service.employee.phone,
+              avatar: buildFileUrl(service.employee.avatar),
+            },
+          })),
+        };
+      }),
     };
   }
 }

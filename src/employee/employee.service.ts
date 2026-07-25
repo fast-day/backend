@@ -304,6 +304,11 @@ export class EmployeeService {
       url,
     );
 
+    await this.prismaService.company.update({
+      where: { id: companyId },
+      data: { hasEmployees: true },
+    });
+
     return {
       success: true,
       message: "Приглашение отправлено на почту",

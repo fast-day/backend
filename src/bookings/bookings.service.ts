@@ -470,6 +470,11 @@ export class BookingsService {
         },
       });
 
+      await this.prismaService.company.update({
+        where: { id: company_id },
+        data: { hasBookings: true },
+      });
+
       const { start, end } = getBookingTimeRange(booking.services);
 
       const res = {

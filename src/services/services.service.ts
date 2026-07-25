@@ -297,6 +297,11 @@ export class ServicesService {
       return service;
     });
 
+    await this.prismaService.company.update({
+      where: { id: companyId },
+      data: { hasServices: true },
+    });
+
     return service;
   }
 

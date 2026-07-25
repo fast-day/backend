@@ -264,6 +264,11 @@ export class CustomersService {
       },
     });
 
+    await this.prismaService.company.update({
+      where: { id: companyId },
+      data: { hasCustomers: true },
+    });
+
     return {
       id: create.id,
       note: create.note,
