@@ -20,7 +20,6 @@ export class AuthGuard extends PassportAuthGuard("jwt_app") {
         HttpStatus.UNAUTHORIZED,
       );
     }
-
     return user;
   }
 }

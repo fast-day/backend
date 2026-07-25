@@ -2,33 +2,19 @@ import { ApiProperty } from "@nestjs/swagger";
 import { BookingStatus } from "@prisma/client";
 import { IsDateString, IsEnum, IsOptional, IsString } from "class-validator";
 import { GetQueryDto } from "src/shared/dto/query.dto";
-import { BookingSortOrder } from "./get-customer-bookings.dto";
 
-export class GetBookingsDto extends GetQueryDto {
-  @ApiProperty({ required: false })
-  @IsOptional()
-  @IsString()
-  customer?: string;
+export enum BookingSortOrder {
+  NEWEST = "newest",
+  OLDEST = "oldest",
+  PRICE_ASC = "price_asc",
+  PRICE_DESC = "price_desc",
+}
 
-  // @ApiProperty({ required: false })
-  // @IsOptional()
-  // @IsString()
-  // customer_phone?: string;
-
+export class GetCustomerBookingsDto extends GetQueryDto {
   @ApiProperty({ required: false })
   @IsOptional()
   @IsString()
   employee?: string;
-
-  // @ApiProperty({ required: false })
-  // @IsOptional()
-  // @IsString()
-  // employee_phone?: string;
-
-  // @ApiProperty({ required: false })
-  // @IsOptional()
-  // @IsString()
-  // service?: string;
 
   @ApiProperty({ required: false })
   @IsOptional()
@@ -50,4 +36,3 @@ export class GetBookingsDto extends GetQueryDto {
   @IsEnum(BookingSortOrder)
   sort?: BookingSortOrder;
 }
-export { BookingSortOrder };

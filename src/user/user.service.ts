@@ -100,6 +100,11 @@ export class UserService {
             logo: true,
             currency: true,
             onboarding: { select: { id: true } },
+            hasBookings: true,
+            hasCustomers: true,
+            hasEmployees: true,
+            hasOrders: true,
+            hasServices: true,
           },
         },
       },
@@ -117,6 +122,7 @@ export class UserService {
         }
       : null;
 
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-call
     const locationArr = user.locations.map((loc) => ({
       id: loc.location.id,
       name: loc.location.name,
@@ -149,6 +155,16 @@ export class UserService {
       },
     }));
 
+    const has = user.company?.id
+      ? {
+          has_customers: user.company.hasCustomers,
+          has_employees: user.company.hasEmployees,
+          has_bookings: user.company.hasBookings,
+          has_orders: user.company.hasOrders,
+          has_services: user.company.hasServices,
+        }
+      : null;
+
     return {
       id: user.id,
       email: user.email,
@@ -161,7 +177,9 @@ export class UserService {
       avatar: buildFileUrl(user.avatar),
       locations: locationArr.length ? locationArr : null,
       company: company,
+      ...has,
       settings: {
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-call
         pages: user.settings?.pages.map((p) => ({
           page: p.page,
           is_visible: p.isVisible,
