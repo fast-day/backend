@@ -46,6 +46,7 @@ import { UnAuthorizedDto } from "src/shared/dto/errors.dto";
 import { GetBookingsDto } from "./dto/get-bookings.dto";
 import { BookingCreateOrderDto } from "./dto/booking-create-order.dto";
 import { BookingCustomerResponseDto } from "./dto/booking-customer-response.dto";
+import { GetCustomerBookingsDto } from "./dto/get-customer-bookings.dto";
 
 @ApiTags("Бронирование")
 @Controller()
@@ -179,9 +180,17 @@ export class BookingsController {
   @UseGuards(AuthGuard, LoadUserGuard, CompanyGuard, ScopeGuard)
   @Scopes("booking-customer-detail:read")
   @HttpCode(HttpStatus.OK)
-  getCustomerBookings(@Req() req, @Param("customer_id") customerId: string) {
+  getCustomerBookings(
+    @Req() req,
+    @Query() query: GetCustomerBookingsDto,
+    @Param("customer_id") customerId: string,
+  ) {
     const companyId = req.user.companyId;
-    return this.bookingsService.getCustomerBookings(companyId, customerId);
+    return this.bookingsService.getCustomerBookings(
+      companyId,
+      customerId,
+      query,
+    );
   }
 
   @ApiBearerAuth()

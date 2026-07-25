@@ -212,7 +212,6 @@ export class CustomersController {
   @HttpCode(HttpStatus.OK)
   getCustomerBookingsForLocation(
     @Param("customer_id") customerId: string,
-
     @Req() req,
   ) {
     const companyId = req.user.companyId;
