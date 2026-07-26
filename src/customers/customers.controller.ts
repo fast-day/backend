@@ -39,6 +39,7 @@ import { CustomerMeDto } from "./dto/customer.dto";
 import { LocationGuard } from "src/access/guard/location.guard";
 import { GetCustomersDto } from "./dto/get-customers.dto";
 import { Authorized } from "src/auth/decorators/authorized.decorator";
+import { GetBookingsDto } from "src/bookings/dto/get-bookings.dto";
 
 @ApiTags("Клиенты")
 @Controller()
@@ -212,12 +213,14 @@ export class CustomersController {
   @HttpCode(HttpStatus.OK)
   getCustomerBookingsForLocation(
     @Param("customer_id") customerId: string,
+    @Query() query: Omit<GetBookingsDto, "customer">,
     @Req() req,
   ) {
     const companyId = req.user.companyId;
     return this.customersService.getCustomerBookingsForLocation(
       customerId,
       companyId,
+      query,
     );
   }
 }

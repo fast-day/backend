@@ -164,10 +164,11 @@ export class DirectoriesService {
       },
       visit_total: customer.customer.bookings.map((book) => book.order).length,
       bookings_count: customer.customer._count.bookings,
-      bookings_total: customer.customer.bookings.reduce(
-        (sum, booking) => sum + Number(booking.order?.total),
-        0,
-      ),
+      bookings_total:
+        customer.customer.bookings.reduce(
+          (sum, booking) => sum + Number(booking.order?.total ?? 0),
+          0,
+        ) ?? 0,
     }));
   }
 
