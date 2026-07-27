@@ -158,6 +158,7 @@ export class OrdersService {
         subtotal: ord.subtotal,
         total: ord.total,
         date: formatDateInTimezone(ord.createdAt, timezone),
+        time: formatBookingTime(ord.createdAt, timezone),
         payment_method: ord.paymentMethod,
         is_payment: !ord.paidAt,
         booking_ids: ord.bookings.map((b) => b.id),
