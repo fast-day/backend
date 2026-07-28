@@ -442,6 +442,7 @@ export class OrdersService {
       subtotal: order.subtotal,
       total: order.total,
       date: formatDateInTimezone(order.createdAt, timezone),
+      time: formatBookingTime(order.createdAt, timezone),
       payment_method: order.paymentMethod,
       is_payment: !!order.paidAt,
       discount: order.discount,
