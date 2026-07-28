@@ -1604,9 +1604,24 @@ export class BookingsService {
       const booking = await t.booking.findUnique({
         where: { id: bookingId },
         select: {
+          id: true,
           status: true,
           orderId: true,
-          order: true,
+          order: {
+            select: {
+              id: true,
+              status: true,
+              subtotal: true,
+              total: true,
+              comment: true,
+              discount: true,
+              paidAt: true,
+              publicCode: true,
+              isDeposit: true,
+              tag: true,
+              paymentMethod: true,
+            },
+          },
         },
       });
 
@@ -1626,7 +1641,7 @@ export class BookingsService {
           {
             status: HttpStatus.BAD_REQUEST,
             title: "Ошибка",
-            detail: "Уже завершен",
+            detail: "Запись уже завершена",
           },
           HttpStatus.BAD_REQUEST,
         );
@@ -1670,7 +1685,25 @@ export class BookingsService {
         });
       }
 
-      return { success: true };
+      return {
+        bookign_id: booking.id,
+        booking_status: booking.status,
+        order_id: booking.orderId,
+        order: booking.order
+          ? {
+              id: booking.order.id,
+              status: booking.order.status,
+              subtotal: booking.order.subtotal,
+              total: booking.order.total,
+              comment: booking.order.comment,
+              discount: booking.order.discount,
+              paid_at: booking.order.paidAt,
+              tag: booking.order.tag,
+              payment_method: booking.order.paymentMethod,
+              is_deposit: booking.order.isDeposit,
+            }
+          : null,
+      };
     });
   }
 }
