@@ -67,6 +67,7 @@ enum OrderStatus {
   closed
   paid
   unpaid
+  refund
 }
 
 enum PaymentType {
@@ -139,6 +140,21 @@ enum CUSTOMER_NOTE_TAG {
   important
   administrative
   general
+}
+
+enum RECEIPT_TYPE {
+  charge
+  refund
+}
+
+enum RECEIPT_STATUS {
+  success
+  failed
+}
+
+enum TRANSACTION_TYPE {
+  earning
+  refund_deduction
 }
 
 model Session {
@@ -465,6 +481,8 @@ model Company {
   bookings      Booking[]     @relation("company_bookings")
 
   orders        Order[]
+
+  transactions  Transaction[] @relation("company_transactions")
 
   onboarding    OnboardingSurvey? @relation("company_onboarding")
 
@@ -840,11 +858,53 @@ model Order {
   company       Company       @relation(fields: [companyId], references: [id])
 
   bookings      Booking[]     @relation("booking_order")
+  receipts      Receipt[]     @relation("order_receipt")
+  transactions  Transaction[] @relation("order_transaction")
 
   createdAt     DateTime      @default(now())   @map("created_at")
   updatedAt     DateTime      @updatedAt        @map("updated_at")
 
   @@map("orders")
+}
+
+model Receipt {
+  id            String        @id               @default(uuid())
+
+  type          RECEIPT_TYPE  @default(charge)
+  amount        Int
+  status        RECEIPT_STATUS                  @default(success)
+  snapshot      Json
+
+  orderId       String        @map("order_id")
+  order         Order         @relation("order_receipt", fields: [orderId], references: [id], onDelete: Cascade)
+
+  transaction   Transaction?
+
+  createdAt     DateTime      @default(now())   @map("created_at")
+
+  @@index([orderId])
+  @@map("receipts")
+}
+
+model Transaction {
+  id            String        @id               @default(uuid())
+
+  type          TRANSACTION_TYPE                @default(earning)
+  amount        Int
+
+  companyId     String        @map("company_id")
+  company       Company       @relation("company_transactions" ,fields: [companyId], references: [id])
+
+  orderId       String        @map("order_id")
+  order         Order         @relation("order_transaction", fields: [orderId], references: [id])
+
+  receiptId     String?       @unique           @map("receipt_id")
+  receipt       Receipt?      @relation(fields: [receiptId], references: [id])
+
+  createdAt     DateTime      @default(now())   @map("created_at")
+
+  @@index([companyId, createdAt])
+  @@map("transactions")
 }
 
 /*

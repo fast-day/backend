@@ -67,6 +67,7 @@ const permissions = [
 
   "orders:read",
   "order-detail:read",
+  "orders:write",
 ];
 
 const employeePermissions = [

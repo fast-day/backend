@@ -403,7 +403,7 @@ export class BookingsService {
         data: {
           tag: generateBookingTag(),
           comment: dto.comment,
-          status: dto.status ?? "pending",
+          status: dto.status ?? "new",
           type: dto.type,
           locationId: dto.location_id,
           companyId: company_id,
@@ -1533,8 +1533,8 @@ export class BookingsService {
   }
 
   /*
-      ===== ПОДТВЕРЖДЕНИЕ БРОНИРОВАНИЯ И СОЗДАНИЕ ЗАКАЗА =====
-    */
+     ===== ПОДТВЕРЖДЕНИЕ БРОНИРОВАНИЯ И СОЗДАНИЕ ЗАКАЗА =====
+  */
   async confirmBooking(
     bookingId: string,
     dto: BookingCreateOrderDto,

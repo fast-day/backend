@@ -16,10 +16,42 @@ import {
 } from "src/bookings/utils/format-time.util";
 import { DEFAULT_TIMEZONE } from "src/shared/constant/timezone.constant";
 import { getBookingTimeRange } from "src/bookings/utils/time-range.util";
+import { OrderPaidDto } from "./dto/order-paid.dto";
 
 @Injectable()
 export class OrdersService {
   public constructor(private readonly prismaService: PrismaService) {}
+
+  private async findById(orderId: string, companyId: string) {
+    const order = await this.prismaService.order.findUnique({
+      where: { id: orderId, companyId },
+      select: {
+        id: true,
+        status: true,
+        subtotal: true,
+        total: true,
+        publicCode: true,
+        comment: true,
+        paidAt: true,
+        paymentMethod: true,
+        isDeposit: true,
+        createdAt: true,
+      },
+    });
+
+    if (!order)
+      throw new HttpException(
+        {
+          status: HttpStatus.NOT_FOUND,
+          title: "Платеж не найден",
+          detail: "Не найти платеж",
+          meta: { order_id: orderId },
+        },
+        HttpStatus.NOT_FOUND,
+      );
+
+    return order;
+  }
 
   async create(dto: OrderCreateDto, companyId: string) {
     return await this.prismaService.$transaction(async (t) => {
@@ -55,7 +87,7 @@ export class OrdersService {
 
       const order = await t.order.create({
         data: {
-          status: dto.status ?? "pending",
+          status: "unpaid",
           subtotal,
           tag: generateOrderTag(),
           companyId,
@@ -64,12 +96,65 @@ export class OrdersService {
         },
         select: {
           id: true,
+          status: true,
+          subtotal: true,
+          total: true,
           tag: true,
           paymentMethod: true,
-          status: true,
-          total: true,
-          subtotal: true,
+          paidAt: true,
           comment: true,
+          discount: true,
+          createdAt: true,
+          bookings: {
+            select: {
+              id: true,
+              status: true,
+              tag: true,
+              comment: true,
+              location: { select: { address: { select: { timezone: true } } } },
+              services: {
+                select: {
+                  id: true,
+                  unitPrice: true,
+                  startTime: true,
+                  endTime: true,
+                  duration: true,
+                  count: true,
+                  service: {
+                    select: {
+                      id: true,
+                      name: true,
+                      avatar: true,
+                      mark: true,
+                      category: true,
+                      price: { select: { price: true, costPrice: true } },
+                      duration: true,
+                    },
+                  },
+                  employee: {
+                    select: {
+                      id: true,
+                      firstName: true,
+                      lastName: true,
+                      phone: true,
+                      avatar: true,
+                    },
+                  },
+                },
+              },
+              customer: {
+                select: {
+                  id: true,
+                  firstName: true,
+                  lastName: true,
+                  phone: true,
+                  email: true,
+                  avatar: true,
+                  birthday: true,
+                },
+              },
+            },
+          },
         },
       });
 
@@ -83,14 +168,216 @@ export class OrdersService {
         data: { hasOrders: true },
       });
 
+      const timezone =
+        order.bookings[0]?.location.address?.timezone ?? DEFAULT_TIMEZONE;
+
       return {
         id: order.id,
-        tag: order.tag,
         status: order.status,
-        payment_method: order.paymentMethod,
-        total: order.total,
+        tag: order.tag,
         subtotal: order.subtotal,
-        comment: order.comment ?? null,
+        total: order.total,
+        date: formatDateInTimezone(order.createdAt, timezone),
+        time: formatBookingTime(order.createdAt, timezone),
+        payment_method: order.paymentMethod,
+        is_payment: !!order.paidAt,
+        discount: order.discount,
+
+        bookings: order.bookings.map((booking) => {
+          const { start, end } = getBookingTimeRange(booking.services);
+
+          return {
+            id: booking.id,
+            status: booking.status,
+            tag: booking.tag,
+            comment: booking.comment,
+            date: formatDateInTimezone(start, timezone),
+            start_time: formatBookingTime(start, timezone),
+            end_time: formatBookingTime(end, timezone),
+            customer: {
+              id: booking.customer.id,
+              profile_id: null,
+              first_name: booking.customer.firstName,
+              last_name: booking.customer.lastName,
+              full_name: getFullName(
+                booking.customer.firstName,
+                booking.customer.lastName,
+              ),
+              phone: booking.customer.phone,
+              email: booking.customer.email,
+              birthday: booking.customer.birthday,
+              avatar: buildFileUrl(booking.customer.avatar),
+            },
+            booking_services: booking.services.map((service) => ({
+              booking_service_id: service.id,
+              booking_service_start_time: formatBookingTime(
+                service.startTime,
+                timezone,
+              ),
+              booking_service_end_time: formatBookingTime(
+                service.endTime,
+                timezone,
+              ),
+              booking_service_duration: service.duration,
+              booking_service_price: service.unitPrice,
+              booking_service_count: service.count,
+              service: {
+                service_id: service.service.id,
+                name: service.service.name,
+                mark: service.service.mark,
+                duration: service.service.duration,
+                avatar: buildFileUrl(service.service.avatar),
+                category: service.service.category,
+                prices: {
+                  price: service.service.price?.price,
+                  cost_price: service.service.price?.costPrice,
+                },
+              },
+              user: {
+                user_id: service.employee.id,
+                first_name: service.employee.firstName,
+                last_name: service.employee.lastName,
+                full_name: getFullName(
+                  service.employee.firstName,
+                  service.employee.lastName,
+                ),
+                phone: service.employee.phone,
+                avatar: buildFileUrl(service.employee.avatar),
+              },
+            })),
+          };
+        }),
+      };
+    });
+  }
+
+  async paidOrder(dto: OrderPaidDto, orderId: string, companyId: string) {
+    const order = await this.findById(orderId, companyId);
+
+    if (order.status !== "unpaid")
+      throw new HttpException(
+        {
+          status: HttpStatus.BAD_REQUEST,
+          title: "Не удалось завершить платеж",
+          detail: "Статус заказа не позволяет провести оплату",
+          meta: { order_id: orderId, status: order.status },
+        },
+        HttpStatus.BAD_REQUEST,
+      );
+
+    return this.prismaService.$transaction(async (t) => {
+      const updOrder = await t.order.update({
+        where: { id: orderId, companyId },
+        data: {
+          status: "paid",
+          paymentMethod: dto.payment_method,
+          comment: dto.comment ?? null,
+          total: order.subtotal,
+          paidAt: new Date(),
+        },
+        select: {
+          id: true,
+          status: true,
+          subtotal: true,
+          total: true,
+          tag: true,
+          paymentMethod: true,
+          paidAt: true,
+          comment: true,
+          discount: true,
+          createdAt: true,
+        },
+      });
+
+      await t.booking.updateMany({
+        where: { orderId, status: { not: "cancelled" } },
+        data: { status: "completed" },
+      });
+
+      const amount = updOrder.subtotal - (updOrder.discount ?? 0);
+
+      const receipt = await t.receipt.create({
+        data: {
+          orderId,
+          amount: amount,
+          status: "success",
+          snapshot: {
+            order_id: updOrder.id,
+            payment_method: updOrder.paymentMethod,
+            comment: updOrder.comment,
+            discount: updOrder.discount,
+            tag: updOrder.tag,
+          },
+        },
+        select: { id: true },
+      });
+
+      await t.transaction.create({
+        data: {
+          companyId,
+          orderId,
+          receiptId: receipt.id,
+          type: "earning",
+          amount: amount,
+        },
+      });
+
+      return {
+        id: updOrder.id,
+        status: updOrder.status,
+        tag: updOrder.tag,
+        subtotal: updOrder.subtotal,
+        total: updOrder.total,
+        payment_method: updOrder.paymentMethod,
+        is_payment: !!updOrder.paidAt,
+        discount: updOrder.discount,
+      };
+    });
+  }
+
+  async refundOrder(orderId: string, companyId: string) {
+    const order = await this.findById(orderId, companyId);
+
+    if (order.status !== "paid")
+      throw new HttpException(
+        {
+          status: HttpStatus.BAD_REQUEST,
+          title: "Не удалось выполнить возврат средств",
+          detail: "Статус заказа не позволяет выполнить возврат средств",
+          meta: { order_id: orderId, status: order.status },
+        },
+        HttpStatus.BAD_REQUEST,
+      );
+
+    return await this.prismaService.$transaction(async (t) => {
+      const updOrder = await t.order.update({
+        where: { id: orderId, companyId },
+        data: {
+          status: "refund",
+        },
+        select: {
+          id: true,
+          status: true,
+          subtotal: true,
+          total: true,
+          tag: true,
+          paymentMethod: true,
+          paidAt: true,
+          comment: true,
+          discount: true,
+          createdAt: true,
+        },
+      });
+
+      return {
+        id: updOrder.id,
+        status: updOrder.status,
+        tag: updOrder.tag,
+        subtotal: updOrder.subtotal,
+        total: updOrder.total,
+        payment_method: updOrder.paymentMethod,
+        is_payment: !!updOrder.paidAt,
+        discount: updOrder.discount,
       };
     });
   }
