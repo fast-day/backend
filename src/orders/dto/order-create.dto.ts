@@ -4,11 +4,11 @@ import { IsArray, IsEnum, IsOptional, IsString } from "class-validator";
 export class OrderCreateDto {
   @IsEnum(OrderStatus)
   @IsOptional()
-  status: OrderStatus | undefined;
+  status?: OrderStatus;
 
   @IsEnum(PaymentType)
   @IsOptional()
-  payment_method?: PaymentType | undefined;
+  payment_method?: PaymentType;
 
   @IsString()
   @IsOptional()
@@ -16,5 +16,19 @@ export class OrderCreateDto {
 
   @IsArray()
   @IsString({ each: true })
-  booking_ids: string[] | undefined;
+  booking_ids?: string[];
+}
+
+export class NewOrderCreateDto {
+  @IsEnum(OrderStatus)
+  @IsOptional()
+  status?: OrderStatus;
+
+  @IsEnum(PaymentType)
+  @IsOptional()
+  payment_method?: PaymentType;
+
+  @IsString()
+  @IsOptional()
+  comment?: string;
 }
