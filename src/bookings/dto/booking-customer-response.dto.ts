@@ -14,7 +14,7 @@ export class BookingCustomerResponseDto {
   @ApiProperty({ example: "Customer API" })
   name!: string;
 
-  @ApiProperty({ enum: BookingStatus, example: BookingStatus.confirmed })
+  @ApiProperty({ enum: BookingStatus, example: BookingStatus.new })
   status!: BookingStatus;
 
   @ApiProperty({ example: "10:00" })

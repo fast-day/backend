@@ -133,7 +133,7 @@ export class BookingResponseDto {
   @ApiProperty({ example: "Customer API" })
   name!: string;
 
-  @ApiProperty({ enum: BookingStatus, example: BookingStatus.confirmed })
+  @ApiProperty({ enum: BookingStatus, example: BookingStatus.new })
   status!: BookingStatus;
 
   @ApiProperty({ example: "10:00" })
@@ -171,7 +171,7 @@ export class BookingListResponseDto {
   @ApiProperty({ example: "Customer API" })
   name!: string;
 
-  @ApiProperty({ enum: BookingStatus, example: BookingStatus.confirmed })
+  @ApiProperty({ enum: BookingStatus, example: BookingStatus.new })
   status!: BookingStatus;
 
   @ApiProperty({ example: "10:00" })
@@ -200,7 +200,7 @@ export class CreateBookingResponseDto {
   @ApiProperty({ example: "Customer API" })
   name!: string;
 
-  @ApiProperty({ enum: BookingStatus, example: BookingStatus.confirmed })
+  @ApiProperty({ enum: BookingStatus, example: BookingStatus.new })
   status!: BookingStatus;
 
   @ApiProperty({ example: "29-10-2025" })
@@ -226,7 +226,7 @@ export class UpdateBookingResponseDto {
   @ApiProperty({ example: "Customer API" })
   name!: string;
 
-  @ApiProperty({ enum: BookingStatus, example: BookingStatus.confirmed })
+  @ApiProperty({ enum: BookingStatus, example: BookingStatus.new })
   status!: BookingStatus;
 }
 
@@ -346,7 +346,7 @@ export class ClientBookingResponseDto {
 
   @ApiProperty({
     enum: BookingStatus,
-    example: BookingStatus.confirmed,
+    example: BookingStatus.new,
     description: "Статус бронирования",
   })
   status!: BookingStatus;

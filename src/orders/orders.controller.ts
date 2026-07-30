@@ -1,9 +1,11 @@
 import {
+  Body,
   Controller,
   Get,
   HttpCode,
   HttpStatus,
   Param,
+  Post,
   Query,
   Req,
   UseGuards,
@@ -11,6 +13,7 @@ import {
 import { OrdersService } from "./orders.service";
 import {
   ApiBearerAuth,
+  ApiBody,
   ApiOperation,
   ApiParam,
   ApiResponse,
@@ -24,11 +27,160 @@ import { Scopes } from "src/access/decorator/scopes.decorator";
 import { GetOrdersDto } from "./dto/get-orders.dto";
 import { UnAuthorizedDto } from "src/shared/dto/errors.dto";
 import { CompanyGuard } from "src/access/guard/company.guard";
+import { OrderPaidDto } from "./dto/order-paid.dto";
+import { NewOrderCreateDto } from "./dto/order-create.dto";
 
 @ApiTags("Заказы")
 @Controller()
 export class OrdersController {
   constructor(private readonly ordersService: OrdersService) {}
+
+  /*
+    ===== ОПЛАТА ЗАКАЗА =====
+  */
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: "Оплата заказа",
+  })
+  @ApiParam({
+    name: "order_id",
+    example: "a81b90e4-5a76-4870-84be-c9732b9b22c1",
+    description: "ID заказа",
+  })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    type: undefined,
+  })
+  @ApiResponse({
+    status: HttpStatus.UNAUTHORIZED,
+    description: "unauthorized",
+    type: UnAuthorizedDto,
+  })
+  @ApiResponse({
+    status: HttpStatus.NOT_FOUND,
+    description: "not found",
+  })
+  @Post("orders/:order_id/paid")
+  @UseGuards(AuthGuard, LoadUserGuard, CompanyGuard, ScopeGuard)
+  @Scopes("orders:write")
+  @HttpCode(HttpStatus.OK)
+  paidOrder(
+    @Req() req,
+    @Param("order_id") orderId: string,
+    @Body() dto: OrderPaidDto,
+  ) {
+    const companyId = req.user.companyId;
+    return this.ordersService.paidOrder(dto, orderId, companyId);
+  }
+
+  /*
+    ===== СОЗДАНИЕ ЗАКАЗА =====
+  */
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: "Создание заказа",
+  })
+  @ApiParam({
+    name: "booking_id",
+    example: "a81b90e4-5a76-4870-84be-c9732b9b22c1",
+    description: "ID Записи",
+  })
+  @ApiBody({
+    type: NewOrderCreateDto,
+  })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    type: undefined,
+  })
+  @ApiResponse({
+    status: HttpStatus.UNAUTHORIZED,
+    description: "unauthorized",
+    type: UnAuthorizedDto,
+  })
+  @ApiResponse({
+    status: HttpStatus.NOT_FOUND,
+    description: "not found",
+  })
+  @Post("orders/:booking_id")
+  @UseGuards(AuthGuard, LoadUserGuard, CompanyGuard, ScopeGuard)
+  @Scopes("orders:create")
+  @HttpCode(HttpStatus.OK)
+  create(
+    @Req() req,
+    @Param("booking_id") bookingId: string,
+    @Body() dto: NewOrderCreateDto,
+  ) {
+    const companyId = req.user.companyId;
+    return this.ordersService.newOrder(dto, bookingId, companyId);
+  }
+
+  /*
+    ===== ОТМЕНА ЗАКАЗА =====
+  */
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: "Отмена заказа",
+  })
+  @ApiParam({
+    name: "booking_id",
+    example: "a81b90e4-5a76-4870-84be-c9732b9b22c1",
+    description: "ID Заказа",
+  })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    type: undefined,
+  })
+  @ApiResponse({
+    status: HttpStatus.UNAUTHORIZED,
+    description: "unauthorized",
+    type: UnAuthorizedDto,
+  })
+  @ApiResponse({
+    status: HttpStatus.NOT_FOUND,
+    description: "not found",
+  })
+  @Post("orders/:order_id/cancel")
+  @UseGuards(AuthGuard, LoadUserGuard, CompanyGuard, ScopeGuard)
+  @Scopes("orders:cancel")
+  @HttpCode(HttpStatus.OK)
+  cancel(@Req() req, @Param("order_id") orderId: string) {
+    const companyId = req.user.companyId;
+    return this.ordersService.cancel(orderId, companyId);
+  }
+
+  /*
+    ===== ВОЗВРАТ СРЕДСТВ =====
+  */
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: "Возврат средств",
+  })
+  @ApiParam({
+    name: "booking_id",
+    example: "a81b90e4-5a76-4870-84be-c9732b9b22c1",
+    description: "ID Заказа",
+  })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    type: undefined,
+  })
+  @ApiResponse({
+    status: HttpStatus.UNAUTHORIZED,
+    description: "unauthorized",
+    type: UnAuthorizedDto,
+  })
+  @ApiResponse({
+    status: HttpStatus.NOT_FOUND,
+    description: "not found",
+  })
+  @Post("orders/:order_id/refund")
+  @UseGuards(AuthGuard, LoadUserGuard, CompanyGuard, ScopeGuard)
+  @Scopes("orders:refund")
+  @HttpCode(HttpStatus.OK)
+  refund(@Req() req, @Param("order_id") orderId: string) {
+    const companyId = req.user.companyId;
+    return this.ordersService.refundOrder(orderId, companyId);
+  }
 
   @ApiBearerAuth()
   @ApiOperation({

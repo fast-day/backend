@@ -149,7 +149,7 @@ export class ServiceCreateResponseDto {
   name!: string;
 
   @ApiProperty({
-    example: "red | orange | green | blue | purple | teal | pink",
+    example: "red | orange | green | blue | purple | teal | pink | primary",
     description: "цвет (обозначение)",
   })
   @IsEnum(MarkEnum)

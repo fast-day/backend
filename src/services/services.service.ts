@@ -255,9 +255,6 @@ export class ServicesService {
       const service = await t.service.create({
         data: {
           ...serviceDto,
-          // days: dto.days,
-          // timeStart: dto.time_start,
-          // timeEnd: dto.time_end,
           price: {
             create: {
               price: dto.price,

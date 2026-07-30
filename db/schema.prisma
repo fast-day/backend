@@ -54,19 +54,15 @@ enum SEX {
 // можно дополнить - "pending" | "approved" | "rejected" | "canceled" | "completed" | "expired" | "error";
 enum BookingStatus {
   new
-  pending
-  expired
-  confirmed
-  cancelled
   completed
+  cancelled
 }
 
 enum OrderStatus {
-  pending
-  open
-  closed
-  paid
   unpaid
+  paid
+  refund
+  cancelled
 }
 
 enum PaymentType {
@@ -104,6 +100,7 @@ enum MarkEnum {
   purple
   teal
   pink
+  primary
 }
 
 enum InviteAction {
@@ -139,6 +136,33 @@ enum CUSTOMER_NOTE_TAG {
   important
   administrative
   general
+}
+
+enum RECEIPT_TYPE {
+  paid
+  refunded
+}
+
+enum RECEIPT_STATUS {
+  success
+  failed
+}
+
+enum TRANSACTION_TYPE {
+  earning
+  refund_deduction
+}
+
+enum CANCEL_REASON {
+  client_cancelled          // КЛИЕНТ САМ ОТМЕНИЛ/ПОПРОСИЛ
+  client_no_show            // НЕ ЯВИЛСЯ
+  specialist_cancelled      // СОТРУДНИК ОТМЕНИЛ
+  other                     // ДРУГАЯ ПРИЧИНА
+}
+
+enum COUNTER_TYPE {
+  order
+  receipt
 }
 
 model Session {
@@ -466,12 +490,29 @@ model Company {
 
   orders        Order[]
 
+  transactions  Transaction[] @relation("company_transactions")
+  receipts      Receipt[]     @relation("company_receipt")
+  counters      CompanyCounter[]  @relation("company_counter")
+
   onboarding    OnboardingSurvey? @relation("company_onboarding")
 
   createdAt     DateTime      @default(now())   @map("created_at")
   updatedAt     DateTime      @updatedAt        @map("updated_at")
 
   @@map("companies")
+}
+
+model CompanyCounter {
+  id            String        @id               @default(uuid())
+
+  companyId     String        @map("company_id")
+  company       Company       @relation("company_counter", fields: [companyId], references: [id])
+
+  type          COUNTER_TYPE
+  value         Int           @default(0)
+
+  @@unique([companyId, type])
+  @@map("company_counters")
 }
 
 model OnboardingSurvey {
@@ -748,36 +789,30 @@ model Booking {
 
   publicCode    Int           @unique           @default(autoincrement())       @map("public_code")
 
-  // УБРААТЬ start_time, end_time & date
-  // startTime     String?       @map("start_time")
-  // endTime       String?       @map("end_time")
-  // date          DateTime?     @db.Date
-  //
-
   comment       String?
-  status        BookingStatus @default(confirmed)
+  status        BookingStatus @default(new)
   tag           String?       @unique
 
   type          BookingType? @default(offline)
 
-  location      Location      @relation("booking_locations", fields: [locationId], references: [id])
+  mark          MarkEnum?    @default(orange)
+
+  location      Location     @relation("booking_locations", fields: [locationId], references: [id])
   locationId    String
 
-  customer      Customer      @relation("booking_customer", fields: [customerId], references: [id])
+  customer      Customer     @relation("booking_customer", fields: [customerId], references: [id])
   customerId    String
-
-  // service       Service       @relation("booking_service", fields: [serviceId], references: [id])
-  // serviceId     String
 
   services      BookingService[]                @relation("booking_services")
   notes         CustomerNote[]                  @relation("note_booking")
 
-  // УБИРАЕМ СОТРУДНИКА - ПЕРЕНОС В BOOKING_SERVICE
-  // employee      User          @relation("booking_employee", fields: [employeeId], references: [id])
-  // employeeId    String
+  cancelledAt   DateTime?     @map("cancelled_at")
+  cancelReason  CANCEL_REASON? @map("cancel_reason")
 
   order         Order?        @relation("booking_order", fields: [orderId], references: [id])
   orderId       String?
+
+  history       OrderBookingHistory[]           @relation("booking_order_history")
 
   company       Company       @relation("company_bookings", fields: [companyId], references: [id])
   companyId     String        @map("company_id")
@@ -826,7 +861,7 @@ model Order {
   publicCode    Int           @unique           @default(autoincrement())       @map("public_code")
 
   tag           String?       @unique
-  status        OrderStatus   @default(pending)
+  status        OrderStatus   @default(unpaid)
   subtotal      Int
   total         Int?
   discount      Int?
@@ -840,11 +875,76 @@ model Order {
   company       Company       @relation(fields: [companyId], references: [id])
 
   bookings      Booking[]     @relation("booking_order")
+  history       OrderBookingHistory[]           @relation("order_history")
+  receipts      Receipt[]     @relation("order_receipt")
+  transactions  Transaction[] @relation("order_transaction")
 
   createdAt     DateTime      @default(now())   @map("created_at")
   updatedAt     DateTime      @updatedAt        @map("updated_at")
 
   @@map("orders")
+}
+
+model OrderBookingHistory {
+  id            String        @id               @default(uuid())
+
+  orderId     String   @map("order_id")
+  order       Order    @relation("order_history", fields: [orderId], references: [id], onDelete: Cascade)
+
+  bookingId   String   @map("booking_id")
+  booking     Booking  @relation("booking_order_history", fields: [bookingId], references: [id], onDelete: Cascade)
+
+  createdAt     DateTime      @default(now())   @map("created_at")
+  
+  @@unique([orderId, bookingId])
+  @@index([bookingId, orderId])
+  @@map("order_booking_history")
+}
+
+model Receipt {
+  id            String        @id               @default(uuid())
+
+  tag           String?       @unique
+
+  type          RECEIPT_TYPE  @default(paid)
+  amount        Int
+  status        RECEIPT_STATUS                  @default(success)
+  snapshot      Json
+
+  companyId     String        @map("company_id")
+  company       Company       @relation("company_receipt", fields: [companyId], references: [id])
+
+  orderId       String        @map("order_id")
+  order         Order         @relation("order_receipt", fields: [orderId], references: [id], onDelete: Cascade)
+
+  transaction   Transaction?
+
+  createdAt     DateTime      @default(now())   @map("created_at")
+
+  @@unique([companyId, tag])
+  @@index([orderId])
+  @@map("receipts")
+}
+
+model Transaction {
+  id            String        @id               @default(uuid())
+
+  type          TRANSACTION_TYPE                @default(earning)
+  amount        Int
+
+  companyId     String        @map("company_id")
+  company       Company       @relation("company_transactions" ,fields: [companyId], references: [id])
+
+  orderId       String        @map("order_id")
+  order         Order         @relation("order_transaction", fields: [orderId], references: [id])
+
+  receiptId     String?       @unique           @map("receipt_id")
+  receipt       Receipt?      @relation(fields: [receiptId], references: [id])
+
+  createdAt     DateTime      @default(now())   @map("created_at")
+
+  @@index([companyId, createdAt])
+  @@map("transactions")
 }
 
 /*
