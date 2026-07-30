@@ -183,6 +183,11 @@ export class OrdersService {
         data: { orderId: order.id, bookingId: bookingId },
       });
 
+      await this.prismaService.company.update({
+        where: { id: companyId },
+        data: { hasOrders: true },
+      });
+
       const timezone =
         order.bookings[0]?.location.address?.timezone ?? DEFAULT_TIMEZONE;
 
@@ -600,7 +605,7 @@ export class OrdersService {
       throw new HttpException(
         {
           status: HttpStatus.BAD_REQUEST,
-          title: "Не удалось выполнить возврат средств",
+          title: "Не удалось оформить возврат",
           detail: "Статус заказа не позволяет выполнить возврат средств",
           meta: { order_id: orderId, status: order.status },
         },
@@ -624,6 +629,54 @@ export class OrdersService {
           comment: true,
           discount: true,
           createdAt: true,
+        },
+      });
+
+      const chargeReceipt = await t.receipt.findFirst({
+        where: { orderId, type: "paid", status: "success" },
+        select: { amount: true },
+      });
+
+      if (!chargeReceipt) {
+        throw new HttpException(
+          {
+            status: HttpStatus.BAD_REQUEST,
+            title: "Не удалось оформить возврат",
+            detail: "Не найден чек об оплате для этого заказа",
+            meta: { order_id: orderId },
+          },
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+
+      const receiptSequence = await getNextSequence(t, companyId, "receipt");
+
+      const receipt = await t.receipt.create({
+        data: {
+          orderId,
+          amount: -chargeReceipt.amount,
+          companyId,
+          tag: generateTag("CN", receiptSequence),
+          type: "refunded",
+          status: "success",
+          snapshot: {
+            order_id: updOrder.id,
+            payment_method: updOrder.paymentMethod,
+            comment: updOrder.comment,
+            discount: updOrder.discount,
+            tag: updOrder.tag,
+          },
+        },
+        select: { id: true },
+      });
+
+      await t.transaction.create({
+        data: {
+          companyId,
+          orderId,
+          receiptId: receipt.id,
+          type: "refund_deduction",
+          amount: -chargeReceipt.amount,
         },
       });
 

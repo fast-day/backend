@@ -1,6 +1,7 @@
 /*
   Warnings:
 
+  - A unique constraint covering the columns `[tag]` on the table `receipts` will be added. If there are existing duplicate values, this will fail.
   - A unique constraint covering the columns `[company_id,tag]` on the table `receipts` will be added. If there are existing duplicate values, this will fail.
   - Added the required column `company_id` to the `receipts` table without a default value. This is not possible if the table is not empty.
 
@@ -9,7 +10,8 @@
 CREATE TYPE "COUNTER_TYPE" AS ENUM ('order', 'receipt');
 
 -- AlterTable
-ALTER TABLE "receipts" ADD COLUMN     "company_id" TEXT NOT NULL;
+ALTER TABLE "receipts" ADD COLUMN     "company_id" TEXT NOT NULL,
+ADD COLUMN     "tag" TEXT;
 
 -- CreateTable
 CREATE TABLE "company_counters" (
@@ -23,6 +25,9 @@ CREATE TABLE "company_counters" (
 
 -- CreateIndex
 CREATE UNIQUE INDEX "company_counters_company_id_type_key" ON "company_counters"("company_id", "type");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "receipts_tag_key" ON "receipts"("tag");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "receipts_company_id_tag_key" ON "receipts"("company_id", "tag");

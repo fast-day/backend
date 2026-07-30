@@ -148,6 +148,40 @@ export class OrdersController {
     return this.ordersService.cancel(orderId, companyId);
   }
 
+  /*
+    ===== ВОЗВРАТ СРЕДСТВ =====
+  */
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: "Возврат средств",
+  })
+  @ApiParam({
+    name: "booking_id",
+    example: "a81b90e4-5a76-4870-84be-c9732b9b22c1",
+    description: "ID Заказа",
+  })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    type: undefined,
+  })
+  @ApiResponse({
+    status: HttpStatus.UNAUTHORIZED,
+    description: "unauthorized",
+    type: UnAuthorizedDto,
+  })
+  @ApiResponse({
+    status: HttpStatus.NOT_FOUND,
+    description: "not found",
+  })
+  @Post("orders/:order_id/refund")
+  @UseGuards(AuthGuard, LoadUserGuard, CompanyGuard, ScopeGuard)
+  @Scopes("orders:refund")
+  @HttpCode(HttpStatus.OK)
+  refund(@Req() req, @Param("order_id") orderId: string) {
+    const companyId = req.user.companyId;
+    return this.ordersService.refundOrder(orderId, companyId);
+  }
+
   @ApiBearerAuth()
   @ApiOperation({
     summary: "Получение всех заказов компании",
