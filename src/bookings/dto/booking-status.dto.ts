@@ -5,7 +5,7 @@ import { IsEnum } from "class-validator";
 export class BookingStatusDto {
   @ApiProperty({
     enum: BookingStatus,
-    example: BookingStatus.confirmed,
+    example: BookingStatus.new,
     description: "Новый статус бронирования",
     required: true,
   })

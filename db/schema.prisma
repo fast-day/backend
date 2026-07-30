@@ -56,10 +56,6 @@ enum BookingStatus {
   new
   completed
   cancelled
-
-  pending
-  expired
-  confirmed
 }
 
 enum OrderStatus {
@@ -67,10 +63,6 @@ enum OrderStatus {
   paid
   refund
   cancelled
-
-  pending
-  open
-  closed
 }
 
 enum PaymentType {

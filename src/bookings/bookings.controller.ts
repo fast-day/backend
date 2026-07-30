@@ -6,7 +6,6 @@ import {
   HttpCode,
   HttpStatus,
   Param,
-  Patch,
   Post,
   Put,
   Query,
@@ -30,7 +29,6 @@ import {
   ApiTags,
 } from "@nestjs/swagger/dist/decorators";
 import { BookingStatusDto } from "./dto/booking-status.dto";
-import { BookingUpdateDto } from "./dto/booking-update.dto";
 import { AuthCustomerGuard } from "src/customers/guard/auth.guard";
 import { AuthorizedCustomer } from "src/customers/decorators/authorized.decorator";
 import { ICustomer } from "src/customers/types/customer.type";
@@ -44,7 +42,6 @@ import {
 } from "./dto/booking-response.dto";
 import { UnAuthorizedDto } from "src/shared/dto/errors.dto";
 import { GetBookingsDto } from "./dto/get-bookings.dto";
-import { BookingCreateOrderDto } from "./dto/booking-create-order.dto";
 import { BookingCustomerResponseDto } from "./dto/booking-customer-response.dto";
 import { GetCustomerBookingsDto } from "./dto/get-customer-bookings.dto";
 
@@ -193,45 +190,45 @@ export class BookingsController {
     );
   }
 
-  @ApiBearerAuth()
-  @ApiOperation({
-    summary: "Редактирование бронирования",
-    description: "Обновляет данные существующего бронирования",
-  })
-  @ApiParam({
-    name: "booking_id",
-    example: "a81b90e4-5a76-4870-84be-c9732b9b22c1",
-    description: "ID бронирования",
-  })
-  @ApiBody({
-    type: BookingUpdateDto,
-  })
-  @ApiResponse({
-    status: HttpStatus.OK,
-    description: "Бронирование обновлено",
-    type: BookingResponseDto,
-  })
-  @ApiResponse({
-    status: HttpStatus.UNAUTHORIZED,
-    description: "unauthorized",
-    type: UnAuthorizedDto,
-  })
-  @ApiResponse({
-    status: HttpStatus.NOT_FOUND,
-    description: "not found",
-  })
-  @Patch("booking/:booking_id")
-  @UseGuards(AuthGuard, LoadUserGuard, CompanyGuard, ScopeGuard)
-  @Scopes("booking:update")
-  @HttpCode(HttpStatus.OK)
-  update(
-    @Body() dto: BookingUpdateDto,
-    @Param("booking_id") bookingId: string,
-    @Req() req,
-  ) {
-    const companyId = req.user.companyId;
-    return this.bookingsService.update(dto, bookingId, companyId);
-  }
+  // @ApiBearerAuth()
+  // @ApiOperation({
+  //   summary: "Редактирование бронирования",
+  //   description: "Обновляет данные существующего бронирования",
+  // })
+  // @ApiParam({
+  //   name: "booking_id",
+  //   example: "a81b90e4-5a76-4870-84be-c9732b9b22c1",
+  //   description: "ID бронирования",
+  // })
+  // @ApiBody({
+  //   type: BookingUpdateDto,
+  // })
+  // @ApiResponse({
+  //   status: HttpStatus.OK,
+  //   description: "Бронирование обновлено",
+  //   type: BookingResponseDto,
+  // })
+  // @ApiResponse({
+  //   status: HttpStatus.UNAUTHORIZED,
+  //   description: "unauthorized",
+  //   type: UnAuthorizedDto,
+  // })
+  // @ApiResponse({
+  //   status: HttpStatus.NOT_FOUND,
+  //   description: "not found",
+  // })
+  // @Patch("booking/:booking_id")
+  // @UseGuards(AuthGuard, LoadUserGuard, CompanyGuard, ScopeGuard)
+  // @Scopes("booking:update")
+  // @HttpCode(HttpStatus.OK)
+  // update(
+  //   @Body() dto: BookingUpdateDto,
+  //   @Param("booking_id") bookingId: string,
+  //   @Req() req,
+  // ) {
+  //   const companyId = req.user.companyId;
+  //   return this.bookingsService.update(dto, bookingId, companyId);
+  // }
 
   @ApiBearerAuth()
   @ApiOperation({
@@ -356,30 +353,30 @@ export class BookingsController {
     return this.bookingsService.createCustomerBooking(dto, customer.id);
   }
 
-  /*
-    ===== ПОДТВЕРЖДЕНИЕ ЗАКАЗА =====
-  */
-  @Patch("booking/:id/confirm")
-  @UseGuards(AuthGuard, LoadUserGuard, ScopeGuard)
-  @Scopes("bookings:write")
-  @HttpCode(HttpStatus.OK)
-  confirmBooking(
-    @Param("id") id: string,
-    @Body() dto: BookingCreateOrderDto,
-    @Req() req,
-  ) {
-    const companyId = req.user.companyId;
-    return this.bookingsService.confirmBooking(id, dto, companyId);
-  }
+  // /*
+  //   ===== ПОДТВЕРЖДЕНИЕ ЗАКАЗА =====
+  // */
+  // @Patch("booking/:id/confirm")
+  // @UseGuards(AuthGuard, LoadUserGuard, ScopeGuard)
+  // @Scopes("bookings:write")
+  // @HttpCode(HttpStatus.OK)
+  // confirmBooking(
+  //   @Param("id") id: string,
+  //   @Body() dto: BookingCreateOrderDto,
+  //   @Req() req,
+  // ) {
+  //   const companyId = req.user.companyId;
+  //   return this.bookingsService.confirmBooking(id, dto, companyId);
+  // }
 
-  /*
-    ===== ЗАВЕРШЕНИЕ БРОНИРОВАНИЯ =====
-  */
-  @Patch("booking/:id/complete")
-  @UseGuards(AuthGuard, LoadUserGuard, ScopeGuard)
-  @Scopes("bookings:write")
-  @HttpCode(HttpStatus.OK)
-  completeBooking(@Param("id") id: string) {
-    return this.bookingsService.completeBooking(id);
-  }
+  // /*
+  //   ===== ЗАВЕРШЕНИЕ БРОНИРОВАНИЯ =====
+  // */
+  // @Patch("booking/:id/complete")
+  // @UseGuards(AuthGuard, LoadUserGuard, ScopeGuard)
+  // @Scopes("bookings:write")
+  // @HttpCode(HttpStatus.OK)
+  // completeBooking(@Param("id") id: string) {
+  //   return this.bookingsService.completeBooking(id);
+  // }
 }

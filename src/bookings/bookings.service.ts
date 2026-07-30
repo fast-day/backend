@@ -5,7 +5,6 @@ import {
   BookingCreateServiceDto,
 } from "./dto/booking-create.dto";
 import { BookingStatusDto } from "./dto/booking-status.dto";
-import { BookingUpdateDto } from "./dto/booking-update.dto";
 import { Prisma } from "@prisma/client";
 import { buildFileUrl } from "src/shared/utils/build-url";
 import { generateBookingTag } from "./utils/generate-tag";
@@ -16,8 +15,6 @@ import {
 import { BookingSortOrder, GetBookingsDto } from "./dto/get-bookings.dto";
 import { normalizePhone } from "src/shared/utils/phone";
 import { OrdersService } from "src/orders/orders.service";
-import { BookingCreateOrderDto } from "./dto/booking-create-order.dto";
-// import { MailService } from "src/mail/mail.service";
 import { getFullName } from "src/shared/utils/get-full-name.util";
 import { BookingDtoService } from "./dto/booking-base.dto";
 import { calcEndTimeDate } from "src/shared/utils/calc-end-time.util";
@@ -403,10 +400,10 @@ export class BookingsService {
         data: {
           tag: generateBookingTag(),
           comment: dto.comment,
-          status: dto.status ?? "new",
           type: dto.type,
           locationId: dto.location_id,
           companyId: company_id,
+          mark: dto.mark,
           customerId,
 
           services: {
@@ -755,141 +752,33 @@ export class BookingsService {
     return { success: true, booking_id: booking.id };
   }
 
-  // eslint-disable-next-line @typescript-eslint/require-await, @typescript-eslint/no-unused-vars
-  async update(dto: BookingUpdateDto, bookingId: string, company_id: string) {
-    // await this.getById(bookingId);
-    // await this.validateLocation(dto.location_id, dto.services);
-    // const locationId = await this.validateEmployeeLocation(
-    //   dto.employee_id,
-    //   dto.location_id,
-    // );
-    // await this.validateEmployeeService(dto.employee_id, dto.services);
-    // const customerId = await this.validateCustomer(dto.customer_id, bookingId);
-    // await this.validateService(dto.services, company_id);
-    // await this.validateCustomerWorked(
-    //   new Date(dto.date),
-    //   locationId,
-    //   dto.start_time,
-    //   dto.end_time,
-    // );
-    // await this.validateOverlapping(
-    //   dto.employee_id,
-    //   new Date(dto.date),
-    //   dto.end_time,
-    //   dto.start_time,
-    //   bookingId,
-    // );
-
-    // const booking = await this.prismaService.booking.update({
-    //   where: { id: bookingId },
-    //   data: {
-    //     date: dto.date,
-    //     startTime: dto.start_time,
-    //     endTime: dto.end_time,
-    //     comment: dto.comment,
-    //     employeeId: dto.employee_id,
-    //     // customerId: customerId,
-    //     // serviceId: dto.service_id,
-    //     locationId: dto.location_id,
-    //   },
-    //   select: {
-    //     id: true,
-    //     status: true,
-    //     startTime: true,
-    //     endTime: true,
-    //     date: true,
-    //     comment: true,
-    //     location: { select: { id: true, name: true } },
-    //     customer: {
-    //       select: {
-    //         id: true,
-    //         firstName: true,
-    //         lastName: true,
-    //         phone: true,
-    //         email: true,
-    //         birthday: true,
-    //       },
-    //     },
-    //     employee: {
-    //       select: { id: true, firstName: true, lastName: true, phone: true },
-    //     },
-    //     services: {
-    //       select: {
-    //         id: true,
-    //         price: true,
-    //         count: true,
-    //         duration: true,
-    //         service: {
-    //           select: {
-    //             id: true,
-    //             name: true,
-    //             avatar: true,
-    //             mark: true,
-    //             price: { select: { price: true, costPrice: true } },
-    //             duration: true,
-    //           },
-    //         },
-    //       },
-    //     },
-    //   },
-    // });
-
-    // const res = {
-    //   id: booking.id,
-    //   status: booking.status,
-    //   start_time: booking.startTime,
-    //   end_time: booking.endTime,
-    //   // date: booking.date.toISOString().split("T")[0],
-    //   comment: booking.comment,
-    //   location: {
-    //     id: booking.location.id,
-    //     name: booking.location.name,
-    //   },
-    //   customer: {
-    //     id: booking.customer.id,
-    //     first_name: booking.customer.firstName,
-    //     last_name: booking.customer.lastName,
-    //     phone: booking.customer.phone,
-    //     email: booking.customer.email,
-    //     birthday: booking.customer.birthday,
-    //   },
-    //   employee: {
-    //     id: booking.employee.id,
-    //     first_name: booking.employee.firstName,
-    //     last_name: booking.employee.lastName,
-    //     phone: booking.employee.phone,
-    //   },
-    //   services: booking.services.map((service) => ({
-    //     booking_service_id: service.id,
-    //     booking_service_price: service.price,
-    //     booking_service_count: service.count,
-    //     booking_service_duration: service.duration,
-    //     service: {
-    //       id: service.service.id,
-    //       name: service.service.name,
-    //       duration: service.service.duration,
-    //       avatar: buildFileUrl(service.service.avatar),
-    //       prices: {
-    //         price: service.service.price?.price,
-    //         cost_price: service.service.price?.costPrice,
-    //       },
-    //     },
-    //   })),
-    // };
-
-    return true;
-  }
-
   async statusUpdate(dto: BookingStatusDto, bookingId: string) {
-    await this.getById(bookingId);
+    const booking = await this.getById(bookingId);
 
-    const booking = await this.prismaService.booking.update({
+    const isExist =
+      booking.status === "cancelled" || booking.status === "completed";
+
+    if (isExist)
+      throw new HttpException(
+        {
+          status: HttpStatus.BAD_REQUEST,
+          title: "Не удалось изменить статус записи",
+          detail: "Запись была отменена или завершена",
+          meta: {
+            booking_id: bookingId,
+            booking_status: booking.status,
+          },
+        },
+        HttpStatus.BAD_REQUEST,
+      );
+
+    const newBooking = await this.prismaService.booking.update({
       where: { id: bookingId },
       data: { status: dto.status },
-      select: { status: true },
+      select: { id: true, status: true, tag: true, type: true },
     });
 
-    return { success: true, booking };
+    return newBooking;
   }
 
   async details(bookingId: string, companyId: string) {
@@ -1530,180 +1419,5 @@ export class BookingsService {
     // });
     // await this.orderService.create();
     // return res;
-  }
-
-  /*
-     ===== ПОДТВЕРЖДЕНИЕ БРОНИРОВАНИЯ И СОЗДАНИЕ ЗАКАЗА =====
-  */
-  async confirmBooking(
-    bookingId: string,
-    dto: BookingCreateOrderDto,
-    companyId: string,
-  ) {
-    const { id } = await this.getById(bookingId);
-
-    const { payment_method } = dto;
-
-    const booking = await this.prismaService.booking.update({
-      where: { id },
-      data: { status: "confirmed" },
-      select: {
-        id: true,
-        status: true,
-        tag: true,
-        order: {
-          select: {
-            id: true,
-            tag: true,
-            paymentMethod: true,
-            status: true,
-            total: true,
-            subtotal: true,
-            comment: true,
-          },
-        },
-      },
-    });
-
-    if (booking.order) {
-      return {
-        id: booking.id,
-        status: booking.status,
-        tag: booking.tag,
-        order: {
-          id: booking.order.id,
-          tag: booking.order.tag,
-          status: booking.order.status,
-          payment_method: booking.order.paymentMethod,
-          total: booking.order.total,
-          subtotal: booking.order.subtotal,
-          comment: booking.order.comment,
-        },
-      };
-    }
-
-    const order = await this.orderService.create(
-      {
-        status: dto.status ?? "pending",
-        payment_method,
-        booking_ids: [id],
-      },
-      companyId,
-    );
-
-    return {
-      order,
-    };
-  }
-
-  /*
-      ===== ЗАВЕРШЕНИЕ БРОНИРОВАНИЯ =====
-    */
-  async completeBooking(bookingId: string) {
-    return this.prismaService.$transaction(async (t) => {
-      const booking = await t.booking.findUnique({
-        where: { id: bookingId },
-        select: {
-          id: true,
-          status: true,
-          orderId: true,
-          order: {
-            select: {
-              id: true,
-              status: true,
-              subtotal: true,
-              total: true,
-              comment: true,
-              discount: true,
-              paidAt: true,
-              publicCode: true,
-              isDeposit: true,
-              tag: true,
-              paymentMethod: true,
-            },
-          },
-        },
-      });
-
-      if (!booking)
-        throw new HttpException(
-          {
-            status: HttpStatus.NOT_FOUND,
-            title: "Ошибка",
-            detail: "Бронирование не найдено.",
-            meta: { booking_id: bookingId },
-          },
-          HttpStatus.NOT_FOUND,
-        );
-
-      if (booking.status === "completed")
-        throw new HttpException(
-          {
-            status: HttpStatus.BAD_REQUEST,
-            title: "Ошибка",
-            detail: "Запись уже завершена",
-          },
-          HttpStatus.BAD_REQUEST,
-        );
-
-      if (booking.status === "cancelled")
-        throw new HttpException(
-          {
-            status: HttpStatus.BAD_REQUEST,
-            title: "Ошибка",
-            detail: "Нельзя завершить отменённое бронирование.",
-          },
-          HttpStatus.BAD_REQUEST,
-        );
-
-      await t.booking.update({
-        where: { id: bookingId },
-        data: { status: "completed" },
-      });
-
-      if (booking.order) {
-        if (booking.order.status === "paid")
-          throw new HttpException(
-            {
-              status: HttpStatus.BAD_REQUEST,
-              title: "Ошибка",
-              detail: "Заказ уже оплачен.",
-            },
-            HttpStatus.BAD_REQUEST,
-          );
-
-        const discount = booking.order.discount ?? 0;
-        const total = booking.order.subtotal - discount;
-
-        await t.order.update({
-          where: { id: booking.order.id },
-          data: {
-            status: "paid",
-            total,
-            paidAt: new Date(),
-          },
-        });
-      }
-
-      return {
-        bookign_id: booking.id,
-        booking_status: booking.status,
-        order_id: booking.orderId,
-        order: booking.order
-          ? {
-              id: booking.order.id,
-              status: booking.order.status,
-              subtotal: booking.order.subtotal,
-              total: booking.order.total,
-              comment: booking.order.comment,
-              discount: booking.order.discount,
-              paid_at: booking.order.paidAt,
-              tag: booking.order.tag,
-              payment_method: booking.order.paymentMethod,
-              is_deposit: booking.order.isDeposit,
-            }
-          : null,
-      };
-    });
   }
 }

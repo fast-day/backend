@@ -1,4 +1,4 @@
-import { BookingStatus, BookingType } from "@prisma/client";
+import { BookingStatus, BookingType, MarkEnum } from "@prisma/client";
 import {
   ArrayNotEmpty,
   IsArray,
@@ -203,9 +203,16 @@ export class BookingCreateDto {
   @IsOptional()
   comment?: string;
 
+  @ApiProperty({
+    example: "red | orange | green | blue | purple | teal | pink | primary",
+    description: "цвет (обозначение)",
+  })
+  @IsEnum(MarkEnum)
+  mark!: MarkEnum;
+
   @ApiPropertyOptional({
     enum: BookingStatus,
-    example: BookingStatus.confirmed,
+    example: BookingStatus.new,
     description: "Статус бронирования",
   })
   @IsEnum(BookingStatus)

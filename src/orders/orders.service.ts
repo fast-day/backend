@@ -83,6 +83,20 @@ export class OrdersService {
         HttpStatus.NOT_FOUND,
       );
 
+    if (booking.status === "cancelled")
+      throw new HttpException(
+        {
+          status: HttpStatus.BAD_REQUEST,
+          title: "Не удалось создать заказ",
+          detail: "Запись была отменена",
+          meta: {
+            booking_id: bookingId,
+            booking_status: booking.status,
+          },
+        },
+        HttpStatus.BAD_REQUEST,
+      );
+
     const isOrderExist =
       !booking?.order || booking.order.status === "cancelled";
 
@@ -309,204 +323,6 @@ export class OrdersService {
       });
 
       return updOrder;
-    });
-  }
-
-  async create(dto: OrderCreateDto, companyId: string) {
-    return await this.prismaService.$transaction(async (t) => {
-      const bookings = await t.booking.findMany({
-        where: {
-          id: { in: dto.booking_ids },
-          orderId: null,
-          status: BookingStatus.confirmed,
-        },
-        include: { services: { select: { unitPrice: true } } },
-      });
-
-      if (!bookings.length)
-        throw new HttpException(
-          {
-            status: HttpStatus.BAD_REQUEST,
-            title: "Ошибка заказа",
-            detail: "Не удалось оформить заказ",
-            meta: { bookings: dto.booking_ids },
-          },
-          HttpStatus.BAD_REQUEST,
-        );
-
-      const subtotal = bookings.reduce(
-        (sum, booking) =>
-          sum +
-          booking.services.reduce(
-            (s, service) => s + Number(service.unitPrice),
-            0,
-          ),
-        0,
-      );
-
-      const order = await t.order.create({
-        data: {
-          status: "unpaid",
-          subtotal,
-          tag: generateOrderTag(),
-          companyId,
-          paymentMethod: dto.payment_method ?? null,
-          bookings: { connect: bookings.map((b) => ({ id: b.id })) },
-        },
-        select: {
-          id: true,
-          status: true,
-          subtotal: true,
-          total: true,
-          tag: true,
-          paymentMethod: true,
-          paidAt: true,
-          comment: true,
-          discount: true,
-          createdAt: true,
-          bookings: {
-            select: {
-              id: true,
-              status: true,
-              tag: true,
-              comment: true,
-              location: { select: { address: { select: { timezone: true } } } },
-              services: {
-                select: {
-                  id: true,
-                  unitPrice: true,
-                  startTime: true,
-                  endTime: true,
-                  duration: true,
-                  count: true,
-                  service: {
-                    select: {
-                      id: true,
-                      name: true,
-                      avatar: true,
-                      mark: true,
-                      category: true,
-                      price: { select: { price: true, costPrice: true } },
-                      duration: true,
-                    },
-                  },
-                  employee: {
-                    select: {
-                      id: true,
-                      firstName: true,
-                      lastName: true,
-                      phone: true,
-                      avatar: true,
-                    },
-                  },
-                },
-              },
-              customer: {
-                select: {
-                  id: true,
-                  firstName: true,
-                  lastName: true,
-                  phone: true,
-                  email: true,
-                  avatar: true,
-                  birthday: true,
-                },
-              },
-            },
-          },
-        },
-      });
-
-      await t.booking.updateMany({
-        where: { id: { in: dto.booking_ids }, orderId: null },
-        data: { orderId: order.id },
-      });
-
-      await this.prismaService.company.update({
-        where: { id: companyId },
-        data: { hasOrders: true },
-      });
-
-      const timezone =
-        order.bookings[0]?.location.address?.timezone ?? DEFAULT_TIMEZONE;
-
-      return {
-        id: order.id,
-        status: order.status,
-        tag: order.tag,
-        subtotal: order.subtotal,
-        total: order.total,
-        date: formatDateInTimezone(order.createdAt, timezone),
-        time: formatBookingTime(order.createdAt, timezone),
-        payment_method: order.paymentMethod,
-        is_payment: !!order.paidAt,
-        discount: order.discount,
-
-        bookings: order.bookings.map((booking) => {
-          const { start, end } = getBookingTimeRange(booking.services);
-
-          return {
-            id: booking.id,
-            status: booking.status,
-            tag: booking.tag,
-            comment: booking.comment,
-            date: formatDateInTimezone(start, timezone),
-            start_time: formatBookingTime(start, timezone),
-            end_time: formatBookingTime(end, timezone),
-            customer: {
-              id: booking.customer.id,
-              profile_id: null,
-              first_name: booking.customer.firstName,
-              last_name: booking.customer.lastName,
-              full_name: getFullName(
-                booking.customer.firstName,
-                booking.customer.lastName,
-              ),
-              phone: booking.customer.phone,
-              email: booking.customer.email,
-              birthday: booking.customer.birthday,
-              avatar: buildFileUrl(booking.customer.avatar),
-            },
-            booking_services: booking.services.map((service) => ({
-              booking_service_id: service.id,
-              booking_service_start_time: formatBookingTime(
-                service.startTime,
-                timezone,
-              ),
-              booking_service_end_time: formatBookingTime(
-                service.endTime,
-                timezone,
-              ),
-              booking_service_duration: service.duration,
-              booking_service_price: service.unitPrice,
-              booking_service_count: service.count,
-              service: {
-                service_id: service.service.id,
-                name: service.service.name,
-                mark: service.service.mark,
-                duration: service.service.duration,
-                avatar: buildFileUrl(service.service.avatar),
-                category: service.service.category,
-                prices: {
-                  price: service.service.price?.price,
-                  cost_price: service.service.price?.costPrice,
-                },
-              },
-              user: {
-                user_id: service.employee.id,
-                first_name: service.employee.firstName,
-                last_name: service.employee.lastName,
-                full_name: getFullName(
-                  service.employee.firstName,
-                  service.employee.lastName,
-                ),
-                phone: service.employee.phone,
-                avatar: buildFileUrl(service.employee.avatar),
-              },
-            })),
-          };
-        }),
-      };
     });
   }
 
@@ -1055,5 +871,206 @@ export class OrdersService {
 
       invoices: order.receipts,
     };
+  }
+
+  /*
+    ----- СТАРЫЙ ВАРИАНТ СОЗДАНИЯ ЗАКАЗА -----
+  */
+  async create(dto: OrderCreateDto, companyId: string) {
+    return await this.prismaService.$transaction(async (t) => {
+      const bookings = await t.booking.findMany({
+        where: {
+          id: { in: dto.booking_ids },
+          orderId: null,
+          status: BookingStatus.completed,
+        },
+        include: { services: { select: { unitPrice: true } } },
+      });
+
+      if (!bookings.length)
+        throw new HttpException(
+          {
+            status: HttpStatus.BAD_REQUEST,
+            title: "Ошибка заказа",
+            detail: "Не удалось оформить заказ",
+            meta: { bookings: dto.booking_ids },
+          },
+          HttpStatus.BAD_REQUEST,
+        );
+
+      const subtotal = bookings.reduce(
+        (sum, booking) =>
+          sum +
+          booking.services.reduce(
+            (s, service) => s + Number(service.unitPrice),
+            0,
+          ),
+        0,
+      );
+
+      const order = await t.order.create({
+        data: {
+          status: "unpaid",
+          subtotal,
+          tag: generateOrderTag(),
+          companyId,
+          paymentMethod: dto.payment_method ?? null,
+          bookings: { connect: bookings.map((b) => ({ id: b.id })) },
+        },
+        select: {
+          id: true,
+          status: true,
+          subtotal: true,
+          total: true,
+          tag: true,
+          paymentMethod: true,
+          paidAt: true,
+          comment: true,
+          discount: true,
+          createdAt: true,
+          bookings: {
+            select: {
+              id: true,
+              status: true,
+              tag: true,
+              comment: true,
+              location: { select: { address: { select: { timezone: true } } } },
+              services: {
+                select: {
+                  id: true,
+                  unitPrice: true,
+                  startTime: true,
+                  endTime: true,
+                  duration: true,
+                  count: true,
+                  service: {
+                    select: {
+                      id: true,
+                      name: true,
+                      avatar: true,
+                      mark: true,
+                      category: true,
+                      price: { select: { price: true, costPrice: true } },
+                      duration: true,
+                    },
+                  },
+                  employee: {
+                    select: {
+                      id: true,
+                      firstName: true,
+                      lastName: true,
+                      phone: true,
+                      avatar: true,
+                    },
+                  },
+                },
+              },
+              customer: {
+                select: {
+                  id: true,
+                  firstName: true,
+                  lastName: true,
+                  phone: true,
+                  email: true,
+                  avatar: true,
+                  birthday: true,
+                },
+              },
+            },
+          },
+        },
+      });
+
+      await t.booking.updateMany({
+        where: { id: { in: dto.booking_ids }, orderId: null },
+        data: { orderId: order.id },
+      });
+
+      await this.prismaService.company.update({
+        where: { id: companyId },
+        data: { hasOrders: true },
+      });
+
+      const timezone =
+        order.bookings[0]?.location.address?.timezone ?? DEFAULT_TIMEZONE;
+
+      return {
+        id: order.id,
+        status: order.status,
+        tag: order.tag,
+        subtotal: order.subtotal,
+        total: order.total,
+        date: formatDateInTimezone(order.createdAt, timezone),
+        time: formatBookingTime(order.createdAt, timezone),
+        payment_method: order.paymentMethod,
+        is_payment: !!order.paidAt,
+        discount: order.discount,
+
+        bookings: order.bookings.map((booking) => {
+          const { start, end } = getBookingTimeRange(booking.services);
+
+          return {
+            id: booking.id,
+            status: booking.status,
+            tag: booking.tag,
+            comment: booking.comment,
+            date: formatDateInTimezone(start, timezone),
+            start_time: formatBookingTime(start, timezone),
+            end_time: formatBookingTime(end, timezone),
+            customer: {
+              id: booking.customer.id,
+              profile_id: null,
+              first_name: booking.customer.firstName,
+              last_name: booking.customer.lastName,
+              full_name: getFullName(
+                booking.customer.firstName,
+                booking.customer.lastName,
+              ),
+              phone: booking.customer.phone,
+              email: booking.customer.email,
+              birthday: booking.customer.birthday,
+              avatar: buildFileUrl(booking.customer.avatar),
+            },
+            booking_services: booking.services.map((service) => ({
+              booking_service_id: service.id,
+              booking_service_start_time: formatBookingTime(
+                service.startTime,
+                timezone,
+              ),
+              booking_service_end_time: formatBookingTime(
+                service.endTime,
+                timezone,
+              ),
+              booking_service_duration: service.duration,
+              booking_service_price: service.unitPrice,
+              booking_service_count: service.count,
+              service: {
+                service_id: service.service.id,
+                name: service.service.name,
+                mark: service.service.mark,
+                duration: service.service.duration,
+                avatar: buildFileUrl(service.service.avatar),
+                category: service.service.category,
+                prices: {
+                  price: service.service.price?.price,
+                  cost_price: service.service.price?.costPrice,
+                },
+              },
+              user: {
+                user_id: service.employee.id,
+                first_name: service.employee.firstName,
+                last_name: service.employee.lastName,
+                full_name: getFullName(
+                  service.employee.firstName,
+                  service.employee.lastName,
+                ),
+                phone: service.employee.phone,
+                avatar: buildFileUrl(service.employee.avatar),
+              },
+            })),
+          };
+        }),
+      };
+    });
   }
 }
