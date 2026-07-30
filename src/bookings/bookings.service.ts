@@ -782,7 +782,7 @@ export class BookingsService {
   }
 
   async details(bookingId: string, companyId: string) {
-    const booking = await this.prismaService.booking.findUnique({
+    const booking = await this.prismaService.booking.findFirst({
       where: { id: bookingId, companyId },
       select: {
         id: true,
@@ -898,6 +898,46 @@ export class BookingsService {
       },
     );
 
+    const history = await this.prismaService.orderBookingHistory.findMany({
+      where: { bookingId },
+      select: {
+        order: {
+          select: {
+            id: true,
+            status: true,
+            tag: true,
+            subtotal: true,
+            total: true,
+            discount: true,
+            paymentMethod: true,
+            paidAt: true,
+            createdAt: true,
+            receipts: {
+              select: {
+                id: true,
+                tag: true,
+                type: true,
+                amount: true,
+                status: true,
+                createdAt: true,
+              },
+              orderBy: { createdAt: "desc" },
+            },
+          },
+        },
+      },
+      orderBy: { createdAt: "asc" },
+    });
+
+    const allOrders = history.map((h) => h.order);
+    const hasCompletedOrder = allOrders.some(
+      (o) => o.status === "paid" && o.receipts.length > 0,
+    );
+
+    const visibleOrders = hasCompletedOrder
+      ? allOrders
+      : allOrders.filter((o) => o.status !== "cancelled");
+
     const { start, end } = getBookingTimeRange(booking.services);
 
     const timezone = booking.location.address?.timezone ?? DEFAULT_TIMEZONE;
@@ -918,7 +958,7 @@ export class BookingsService {
       customer: {
         id: booking.customer.id,
         customer_attributes: {
-          profile_id: booking.customer.id,
+          profile_id: customerCompany?.id,
           first_name: booking.customer.firstName,
           last_name: booking.customer.lastName,
           full_name: getFullName(
@@ -930,9 +970,8 @@ export class BookingsService {
           email: booking.customer.email,
           avatar: buildFileUrl(booking.customer.avatar),
         },
-        visit_total: customerCompany?.customer.bookings.map(
-          (book) => book.order,
-        ).length,
+        visit_total: customerCompany?.customer.bookings.filter((b) => b.order)
+          .length,
         bookings_count: customerCompany?.customer._count.bookings,
         bookings_total: customerCompany?.customer.bookings.reduce(
           (sum, booking) => sum + Number(booking.order?.total ?? 0),
@@ -973,18 +1012,24 @@ export class BookingsService {
           avatar: buildFileUrl(service.employee.avatar),
         },
       })),
-      order: booking.order
-        ? {
-            id: booking.order?.id,
-            status: booking.order?.status,
-            tag: booking.order?.tag,
-            subtotal: booking.order?.subtotal,
-            total: booking.order?.total,
-            discount: booking.order?.discount,
-            payment_method: booking.order?.paymentMethod,
-            paid_at: booking.order?.paidAt,
-          }
-        : null,
+      orders: visibleOrders.map((o) => ({
+        id: o.id,
+        status: o.status,
+        tag: o.tag,
+        subtotal: o.subtotal,
+        total: o.total,
+        discount: o.discount,
+        payment_method: o.paymentMethod,
+        paid_at: o.paidAt,
+        receipts: o.receipts.map((r) => ({
+          id: r.id,
+          tag: r.tag,
+          type: r.type,
+          amount: r.amount,
+          status: r.status,
+          created_at: r.createdAt,
+        })),
+      })),
     };
 
     return res;

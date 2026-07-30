@@ -48,6 +48,7 @@ export class OrdersService {
             status: true,
             amount: true,
           },
+          orderBy: { createdAt: "desc" },
         },
       },
     });

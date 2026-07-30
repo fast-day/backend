@@ -22,7 +22,7 @@ export class BookingCreateCustomerOldDto extends BookingBaseDto {
 
   @ApiPropertyOptional({
     enum: BookingStatus,
-    example: BookingStatus.pending,
+    example: BookingStatus.new,
     description: "Статус бронирования",
   })
   @IsEnum(BookingStatus)
