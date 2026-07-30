@@ -17,6 +17,8 @@ import {
 import { DEFAULT_TIMEZONE } from "src/shared/constant/timezone.constant";
 import { getBookingTimeRange } from "src/bookings/utils/time-range.util";
 import { OrderPaidDto } from "./dto/order-paid.dto";
+import { generateTag } from "src/shared/utils/generate-tag.util";
+import { getNextSequence } from "src/shared/utils/get-next-sequence.util";
 
 @Injectable()
 export class OrdersService {
@@ -38,6 +40,15 @@ export class OrdersService {
         paymentMethod: true,
         isDeposit: true,
         createdAt: true,
+        receipts: {
+          select: {
+            id: true,
+            tag: true,
+            type: true,
+            status: true,
+            amount: true,
+          },
+        },
       },
     });
 
@@ -539,10 +550,14 @@ export class OrdersService {
 
       const amount = updOrder.subtotal - (updOrder.discount ?? 0);
 
+      const receiptSequence = await getNextSequence(t, companyId, "receipt");
+
       const receipt = await t.receipt.create({
         data: {
           orderId,
           amount: amount,
+          companyId,
+          tag: generateTag("CN", receiptSequence),
           status: "success",
           snapshot: {
             order_id: updOrder.id,
@@ -776,34 +791,15 @@ export class OrdersService {
           comment: true,
           discount: true,
           createdAt: true,
-          bookings: {
-            where: { customerId: customer.customerId },
+          history: {
             select: {
-              id: true,
-              location: { select: { address: { select: { timezone: true } } } },
-              status: true,
-              tag: true,
-              comment: true,
-              services: {
+              booking: {
                 select: {
                   id: true,
-                  unitPrice: true,
-                  startTime: true,
-                  endTime: true,
-                  duration: true,
-                  count: true,
-                  service: {
-                    select: {
-                      id: true,
-                      name: true,
-                      avatar: true,
-                      mark: true,
-                      category: true,
-                      price: { select: { price: true, costPrice: true } },
-                      duration: true,
-                    },
+                  location: {
+                    select: { address: { select: { timezone: true } } },
                   },
-                  employee: {
+                  customer: {
                     select: {
                       id: true,
                       firstName: true,
@@ -815,6 +811,8 @@ export class OrdersService {
                 },
               },
             },
+            orderBy: { createdAt: "asc" },
+            take: 1,
           },
         },
         orderBy,
@@ -824,70 +822,34 @@ export class OrdersService {
       this.prismaService.order.count({ where }),
     ]);
 
-    const data = orders.map((order) => {
-      const timezone =
-        order.bookings[0]?.location?.address?.timezone ?? DEFAULT_TIMEZONE;
-      return {
-        id: order.id,
-        status: order.status,
-        subtotal: order.subtotal,
-        total: order.total,
-        date: formatDateInTimezone(order.createdAt, timezone),
-        discount: order.discount,
-        tag: order.tag,
-        payment_method: order.paymentMethod,
-        comment: order.comment,
-        is_payment: !!order.paidAt,
+    const data = orders.map((ord) => {
+      const booking = ord.history[0]?.booking;
+      const timezone = booking?.location?.address?.timezone ?? DEFAULT_TIMEZONE;
 
-        bookings: order.bookings.map((booking) => {
-          const { start, end } = getBookingTimeRange(booking.services);
-          return {
-            id: booking.id,
-            status: booking.status,
-            tag: booking.tag,
-            comment: booking.comment,
-            date: formatDateInTimezone(start, timezone),
-            start_time: formatBookingTime(start, timezone),
-            end_time: formatBookingTime(end, timezone),
-            booking_services: booking.services.map((service) => ({
-              booking_service_id: service.id,
-              booking_service_start_time: formatBookingTime(
-                service.startTime,
-                timezone,
+      return {
+        id: ord.id,
+        tag: ord.tag,
+        status: ord.status,
+        subtotal: ord.subtotal,
+        total: ord.total,
+        date: formatDateInTimezone(ord.createdAt, timezone),
+        time: formatBookingTime(ord.createdAt, timezone),
+        payment_method: ord.paymentMethod,
+        is_payment: !!ord.paidAt,
+        booking_ids: ord.history.map((h) => h.booking.id),
+        customer: booking?.customer
+          ? {
+              id: booking.customer.id,
+              first_name: booking.customer.firstName,
+              last_name: booking.customer.lastName,
+              full_name: getFullName(
+                booking.customer.firstName,
+                booking.customer.lastName,
               ),
-              booking_service_end_time: formatBookingTime(
-                service.endTime,
-                timezone,
-              ),
-              booking_service_duration: service.duration,
-              booking_service_price: service.unitPrice,
-              booking_service_count: service.count,
-              service: {
-                service_id: service.service.id,
-                name: service.service.name,
-                mark: service.service.mark,
-                duration: service.service.duration,
-                avatar: buildFileUrl(service.service.avatar),
-                category: service.service.category,
-                prices: {
-                  price: service.service.price?.price,
-                  cost_price: service.service.price?.costPrice,
-                },
-              },
-              user: {
-                user_id: service.employee.id,
-                first_name: service.employee.firstName,
-                last_name: service.employee.lastName,
-                full_name: getFullName(
-                  service.employee.firstName,
-                  service.employee.lastName,
-                ),
-                phone: service.employee.phone,
-                avatar: buildFileUrl(service.employee.avatar),
-              },
-            })),
-          };
-        }),
+              phone: booking.customer.phone,
+              avatar: buildFileUrl(booking.customer.avatar),
+            }
+          : null,
       };
     });
 
@@ -1037,6 +999,8 @@ export class OrdersService {
           };
         })
         .filter(Boolean),
+
+      invoices: order.receipts,
     };
   }
 }

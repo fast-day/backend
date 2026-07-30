@@ -168,6 +168,11 @@ enum CANCEL_REASON {
   other                     // ДРУГАЯ ПРИЧИНА
 }
 
+enum COUNTER_TYPE {
+  order
+  receipt
+}
+
 model Session {
   id            String        @id               @default(uuid())
 
@@ -494,6 +499,8 @@ model Company {
   orders        Order[]
 
   transactions  Transaction[] @relation("company_transactions")
+  receipts      Receipt[]     @relation("company_receipt")
+  counters      CompanyCounter[]  @relation("company_counter")
 
   onboarding    OnboardingSurvey? @relation("company_onboarding")
 
@@ -501,6 +508,19 @@ model Company {
   updatedAt     DateTime      @updatedAt        @map("updated_at")
 
   @@map("companies")
+}
+
+model CompanyCounter {
+  id            String        @id               @default(uuid())
+
+  companyId     String        @map("company_id")
+  company       Company       @relation("company_counter", fields: [companyId], references: [id])
+
+  type          COUNTER_TYPE
+  value         Int           @default(0)
+
+  @@unique([companyId, type])
+  @@map("company_counters")
 }
 
 model OnboardingSurvey {
@@ -892,10 +912,15 @@ model OrderBookingHistory {
 model Receipt {
   id            String        @id               @default(uuid())
 
+  tag           String?       @unique
+
   type          RECEIPT_TYPE  @default(charge)
   amount        Int
   status        RECEIPT_STATUS                  @default(success)
   snapshot      Json
+
+  companyId     String        @map("company_id")
+  company       Company       @relation("company_receipt", fields: [companyId], references: [id])
 
   orderId       String        @map("order_id")
   order         Order         @relation("order_receipt", fields: [orderId], references: [id], onDelete: Cascade)
@@ -904,6 +929,7 @@ model Receipt {
 
   createdAt     DateTime      @default(now())   @map("created_at")
 
+  @@unique([companyId, tag])
   @@index([orderId])
   @@map("receipts")
 }
