@@ -307,8 +307,15 @@ export class OrdersService {
 
     return this.prismaService.$transaction(async (t) => {
       const updOrder = await t.order.update({
-        where: { id: orderId, companyId },
-        data: { status: "cancelled" },
+        where: {
+          id: orderId,
+          companyId,
+        },
+        data: {
+          status: "cancelled",
+          total: order.total ? -order.total : null,
+          subtotal: -order.subtotal,
+        },
         select: {
           id: true,
           status: true,

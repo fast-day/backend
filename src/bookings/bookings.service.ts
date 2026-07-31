@@ -789,6 +789,7 @@ export class BookingsService {
         tag: true,
         status: true,
         comment: true,
+        orderId: true,
         location: {
           select: {
             id: true,
@@ -926,17 +927,10 @@ export class BookingsService {
           },
         },
       },
-      orderBy: { createdAt: "asc" },
+      orderBy: { createdAt: "desc" },
     });
 
-    const allOrders = history.map((h) => h.order);
-    const hasCompletedOrder = allOrders.some(
-      (o) => o.status === "paid" && o.invoices.length > 0,
-    );
-
-    const visibleOrders = hasCompletedOrder
-      ? allOrders
-      : allOrders.filter((o) => o.status !== "cancelled");
+    const orders = history.map((h) => h.order);
 
     const { start, end } = getBookingTimeRange(booking.services);
 
@@ -947,6 +941,7 @@ export class BookingsService {
       status: booking.status,
       tag: booking.tag,
       comment: booking.comment,
+      order_id: booking.orderId,
       date: formatDateInTimezone(start, timezone),
       start_time: formatBookingTime(start, timezone),
       end_time: formatBookingTime(end, timezone),
@@ -1012,7 +1007,13 @@ export class BookingsService {
           avatar: buildFileUrl(service.employee.avatar),
         },
       })),
-      orders: visibleOrders.map((o) => ({
+      invoice: {
+        total: booking.order?.total,
+        subtotal: booking.order?.subtotal,
+        status: booking.order?.status,
+        order_id: booking.order?.id,
+      },
+      orders: orders.map((o) => ({
         id: o.id,
         status: o.status,
         tag: o.tag,
