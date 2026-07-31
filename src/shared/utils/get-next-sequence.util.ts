@@ -1,9 +1,9 @@
-import { Prisma } from "@prisma/client";
+import { COUNTER_TYPE, Prisma } from "@prisma/client";
 
 export async function getNextSequence(
   tx: Prisma.TransactionClient,
   companyId: string,
-  type: "order" | "receipt",
+  type: COUNTER_TYPE,
 ): Promise<number> {
   const counter = await tx.companyCounter.upsert({
     where: { companyId_type: { companyId, type } },

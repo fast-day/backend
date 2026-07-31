@@ -40,13 +40,14 @@ export class OrdersService {
         paymentMethod: true,
         isDeposit: true,
         createdAt: true,
-        receipts: {
+        invoices: {
           select: {
             id: true,
             tag: true,
             type: true,
             status: true,
             amount: true,
+            createdAt: true,
           },
           orderBy: { createdAt: "desc" },
         },
@@ -372,14 +373,14 @@ export class OrdersService {
 
       const amount = updOrder.subtotal - (updOrder.discount ?? 0);
 
-      const receiptSequence = await getNextSequence(t, companyId, "receipt");
+      const invoiceSequence = await getNextSequence(t, companyId, "invoice");
 
-      const receipt = await t.receipt.create({
+      const invoice = await t.invoice.create({
         data: {
           orderId,
           amount: amount,
           companyId,
-          tag: generateTag("CN", receiptSequence),
+          tag: generateTag("CN", invoiceSequence),
           status: "success",
           snapshot: {
             order_id: updOrder.id,
@@ -396,7 +397,7 @@ export class OrdersService {
         data: {
           companyId,
           orderId,
-          receiptId: receipt.id,
+          invoiceId: invoice.id,
           type: "earning",
           amount: amount,
         },
@@ -449,12 +450,12 @@ export class OrdersService {
         },
       });
 
-      const chargeReceipt = await t.receipt.findFirst({
+      const chargeInvoice = await t.invoice.findFirst({
         where: { orderId, type: "paid", status: "success" },
         select: { amount: true },
       });
 
-      if (!chargeReceipt) {
+      if (!chargeInvoice) {
         throw new HttpException(
           {
             status: HttpStatus.BAD_REQUEST,
@@ -466,14 +467,14 @@ export class OrdersService {
         );
       }
 
-      const receiptSequence = await getNextSequence(t, companyId, "receipt");
+      const invoiceSequence = await getNextSequence(t, companyId, "invoice");
 
-      const receipt = await t.receipt.create({
+      const invoice = await t.invoice.create({
         data: {
           orderId,
-          amount: -chargeReceipt.amount,
+          amount: -chargeInvoice.amount,
           companyId,
-          tag: generateTag("CN", receiptSequence),
+          tag: generateTag("CN", invoiceSequence),
           type: "refunded",
           status: "success",
           snapshot: {
@@ -491,9 +492,9 @@ export class OrdersService {
         data: {
           companyId,
           orderId,
-          receiptId: receipt.id,
+          invoiceId: invoice.id,
           type: "refund_deduction",
-          amount: -chargeReceipt.amount,
+          amount: -chargeInvoice.amount,
         },
       });
 
@@ -870,7 +871,14 @@ export class OrdersService {
         })
         .filter(Boolean),
 
-      invoices: order.receipts,
+      invoices: order.invoices.map((invoice) => ({
+        id: invoice.id,
+        tag: invoice.tag,
+        amount: invoice.amount,
+        status: invoice.status,
+        type: invoice.type,
+        date: formatDateInTimezone(invoice.createdAt, timezone),
+      })),
     };
   }
 

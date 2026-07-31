@@ -912,7 +912,7 @@ export class BookingsService {
             paymentMethod: true,
             paidAt: true,
             createdAt: true,
-            receipts: {
+            invoices: {
               select: {
                 id: true,
                 tag: true,
@@ -931,7 +931,7 @@ export class BookingsService {
 
     const allOrders = history.map((h) => h.order);
     const hasCompletedOrder = allOrders.some(
-      (o) => o.status === "paid" && o.receipts.length > 0,
+      (o) => o.status === "paid" && o.invoices.length > 0,
     );
 
     const visibleOrders = hasCompletedOrder
@@ -1020,14 +1020,14 @@ export class BookingsService {
         total: o.total,
         discount: o.discount,
         payment_method: o.paymentMethod,
-        paid_at: o.paidAt,
-        receipts: o.receipts.map((r) => ({
-          id: r.id,
-          tag: r.tag,
-          type: r.type,
-          amount: r.amount,
-          status: r.status,
-          created_at: r.createdAt,
+        paid_at: o.paidAt ? formatDateInTimezone(o.paidAt, timezone) : null,
+        invoices: o.invoices.map((i) => ({
+          id: i.id,
+          tag: i.tag,
+          type: i.type,
+          amount: i.amount,
+          status: i.status,
+          date: formatDateInTimezone(i.createdAt, timezone),
         })),
       })),
     };
