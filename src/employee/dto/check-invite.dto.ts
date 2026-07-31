@@ -9,7 +9,7 @@ export class CheckInviteDto {
     description: "Токен",
   })
   @IsString()
-  token: string;
+  token!: string;
 }
 
 export class CheckInviteResponseDto {
@@ -18,7 +18,7 @@ export class CheckInviteResponseDto {
     description: "Статус",
   })
   @IsBoolean()
-  valid: boolean;
+  valid!: boolean;
 }
 
 export class CheckInviteResponseErrorDto {
@@ -27,20 +27,20 @@ export class CheckInviteResponseErrorDto {
     description: "Статус",
   })
   @IsNumber()
-  status: number;
+  status!: number;
 
   @ApiProperty({
     example: "Ссылка устарела",
     description: "Заголовок",
   })
   @IsString()
-  title: string;
+  title!: string;
 
   @ApiProperty({
     example:
-      "Срок действия вашей ссылки истек. Пожалуйста, проверьте правильность введенного текста или запросите новую ссылку.",
+      "Срок действия вашей ссылки истек. Пожалуйста, проверьте правильность ссылки или запросите новую.",
     description: "Сообщение",
   })
   @IsString()
-  message: string;
+  message!: string;
 }

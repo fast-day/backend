@@ -458,19 +458,6 @@ export class ServicesService {
   }
 
   async createCategory(dto: ServiceCategoryDto, companyId: string) {
-    const isExists = await this.prismaService.serviceCategory.findFirst({
-      where: { name: dto.name },
-    });
-
-    if (isExists)
-      throw new HttpException(
-        {
-          status: HttpStatus.CONFLICT,
-          title: "Категория уже существует",
-        },
-        HttpStatus.CONFLICT,
-      );
-
     const category = await this.prismaService.serviceCategory.create({
       data: { name: dto.name, companyId },
       select: { id: true, name: true },
