@@ -122,7 +122,6 @@ export class UserService {
         }
       : null;
 
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-call
     const locationArr = user.locations.map((loc) => ({
       id: loc.location.id,
       name: loc.location.name,
@@ -179,7 +178,6 @@ export class UserService {
       company: company,
       ...has,
       settings: {
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-call
         pages: user.settings?.pages.map((p) => ({
           page: p.page,
           is_visible: p.isVisible,

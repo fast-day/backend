@@ -208,7 +208,8 @@ export class BookingCreateDto {
     description: "цвет (обозначение)",
   })
   @IsEnum(MarkEnum)
-  mark!: MarkEnum;
+  @IsOptional()
+  mark?: MarkEnum;
 
   @ApiPropertyOptional({
     enum: BookingStatus,

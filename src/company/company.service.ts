@@ -85,6 +85,11 @@ export class CompanyService {
           logo: true,
           currency: true,
           onboarding: { select: { id: true } },
+          hasBookings: true,
+          hasCustomers: true,
+          hasEmployees: true,
+          hasOrders: true,
+          hasServices: true,
           users: {
             select: {
               id: true,
@@ -105,6 +110,7 @@ export class CompanyService {
                 },
               },
             },
+            take: 1,
           },
         },
       });
@@ -146,6 +152,11 @@ export class CompanyService {
         site_url: `http://app.fast-day.ru/${company.publicName}`,
         currency: company.currency,
       },
+      has_customers: company.hasCustomers,
+      has_employees: company.hasEmployees,
+      has_bookings: company.hasBookings,
+      has_orders: company.hasOrders,
+      has_services: company.hasServices,
       settings: {
         pages: company.users[0].settings?.pages.map((p) => ({
           page: p.page,
