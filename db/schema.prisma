@@ -829,8 +829,8 @@ model Booking {
 model BookingService {
   id            String        @id               @default(uuid())
   
-  unitPrice     Int?          @map("unit_price")
-  duration      Int?
+  unitPrice     Int           @map("unit_price")
+  duration      Int
 
   startTime     DateTime      @map("start_time")
   endTime       DateTime      @map("end_time")
@@ -864,7 +864,7 @@ model Order {
   tag           String?       @unique
   status        OrderStatus   @default(unpaid)
   subtotal      Int
-  total         Int?
+  total         Int
   discount      Int?
   paymentMethod PaymentType?   @map("payment_method")
   paidAt        DateTime?     @map("paid_at")
