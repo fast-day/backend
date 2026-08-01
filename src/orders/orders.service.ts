@@ -20,10 +20,14 @@ import { generateTag } from "src/shared/utils/generate-tag.util";
 import { getNextSequence } from "src/shared/utils/get-next-sequence.util";
 import { IBookingWithOrder, IDraftOrderParams } from "./types/draft-order.type";
 import { CalculatePriceDto } from "./dto/calculate-price.dto";
+import { InvoicesService } from "src/invoices/invoices.service";
 
 @Injectable()
 export class OrdersService {
-  public constructor(private readonly prismaService: PrismaService) {}
+  public constructor(
+    private readonly prismaService: PrismaService,
+    private readonly invoiceService: InvoicesService,
+  ) {}
 
   private async findById(orderId: string, companyId: string) {
     const order = await this.prismaService.order.findFirst({
@@ -458,33 +462,33 @@ export class OrdersService {
         data: { status: "completed" },
       });
 
-      const amount = updOrder.subtotal - (updOrder.discount ?? 0);
+      const amount = updOrder.total - (updOrder.discount ?? 0);
 
       const invoiceSequence = await getNextSequence(t, companyId, "invoice");
 
-      const invoice = await t.invoice.create({
-        data: {
-          orderId,
-          amount: amount,
-          companyId,
-          tag: generateTag("CN", invoiceSequence),
-          status: "success",
-          snapshot: {
-            order_id: updOrder.id,
-            payment_method: updOrder.paymentMethod,
-            comment: updOrder.comment,
-            discount: updOrder.discount,
-            tag: updOrder.tag,
-          },
+      const invoiceTag = generateTag("CN", invoiceSequence);
+
+      const invoiceId = await this.invoiceService.createInvoiceWithPdf(t, {
+        orderId,
+        companyId,
+        amount,
+        tag: invoiceTag,
+        type: "paid",
+        snapshot: {
+          order_id: updOrder.id,
+          payment_method: updOrder.paymentMethod,
+          comment: updOrder.comment,
+          discount: updOrder.discount,
+          tag: updOrder.tag,
         },
-        select: { id: true },
+        pdfParams: { tag: invoiceTag },
       });
 
       await t.transaction.create({
         data: {
           companyId,
           orderId,
-          invoiceId: invoice.id,
+          invoiceId,
           type: "earning",
           amount: amount,
         },
@@ -556,30 +560,29 @@ export class OrdersService {
 
       const invoiceSequence = await getNextSequence(t, companyId, "invoice");
 
-      const invoice = await t.invoice.create({
-        data: {
-          orderId,
-          amount: -chargeInvoice.amount,
-          companyId,
-          tag: generateTag("CN", invoiceSequence),
-          type: "refunded",
-          status: "success",
-          snapshot: {
-            order_id: updOrder.id,
-            payment_method: updOrder.paymentMethod,
-            comment: updOrder.comment,
-            discount: updOrder.discount,
-            tag: updOrder.tag,
-          },
+      const invoiceTag = generateTag("CN", invoiceSequence);
+
+      const invoiceId = await this.invoiceService.createInvoiceWithPdf(t, {
+        orderId,
+        companyId,
+        amount: -chargeInvoice.amount,
+        tag: invoiceTag,
+        type: "paid",
+        snapshot: {
+          order_id: updOrder.id,
+          payment_method: updOrder.paymentMethod,
+          comment: updOrder.comment,
+          discount: updOrder.discount,
+          tag: updOrder.tag,
         },
-        select: { id: true },
+        pdfParams: { tag: invoiceTag },
       });
 
       await t.transaction.create({
         data: {
           companyId,
           orderId,
-          invoiceId: invoice.id,
+          invoiceId,
           type: "refund_deduction",
           amount: -chargeInvoice.amount,
         },

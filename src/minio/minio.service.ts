@@ -69,4 +69,36 @@ export class MinioService {
     await this.minioClient.removeObject(bucket, fileName);
     return true;
   }
+
+  async uploadDocument(
+    bucket: string,
+    buffer: Buffer,
+    fileName: string,
+    mimetype: string,
+  ) {
+    const isExists = await this.minioClient
+      .bucketExists(bucket)
+      .catch(() => false);
+
+    if (!isExists)
+      throw new HttpException(
+        {
+          status: HttpStatus.INTERNAL_SERVER_ERROR,
+          title: "Ошибка загрузки документа",
+          detail: "Хранилище недоступно",
+          meta: { bucket },
+        },
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+
+    await this.minioClient.putObject(bucket, fileName, buffer, buffer.length, {
+      "Content-Type": mimetype,
+    });
+
+    return fileName;
+  }
+
+  async getFileStream(bucket: string, fileName: string) {
+    return this.minioClient.getObject(bucket, fileName);
+  }
 }

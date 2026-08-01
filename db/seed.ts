@@ -71,6 +71,8 @@ const permissions = [
   "orders:draft",
   "orders:cancel",
   "orders:refund",
+
+  "invoice:download",
 ];
 
 const employeePermissions = [
@@ -98,6 +100,8 @@ const employeePermissions = [
   "directory:services",
   "directory:location-employees",
   "directory:location-services",
+
+  "invoice:download",
 ];
 
 const ROLE_PRESETS: Record<string, string[]> = {
