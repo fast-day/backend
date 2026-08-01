@@ -1,5 +1,11 @@
 import { OrderStatus, PaymentType } from "@prisma/client";
-import { IsArray, IsEnum, IsOptional, IsString } from "class-validator";
+import {
+  IsArray,
+  IsEnum,
+  IsNumber,
+  IsOptional,
+  IsString,
+} from "class-validator";
 
 export class OrderCreateDto {
   @IsEnum(OrderStatus)
@@ -19,7 +25,7 @@ export class OrderCreateDto {
   booking_ids?: string[];
 }
 
-export class NewOrderCreateDto {
+export class DraftOrderDto {
   @IsEnum(OrderStatus)
   @IsOptional()
   status?: OrderStatus;
@@ -31,4 +37,8 @@ export class NewOrderCreateDto {
   @IsString()
   @IsOptional()
   comment?: string;
+
+  @IsNumber()
+  @IsOptional()
+  discount?: number;
 }

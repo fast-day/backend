@@ -138,12 +138,12 @@ enum CUSTOMER_NOTE_TAG {
   general
 }
 
-enum RECEIPT_TYPE {
+enum INVOICE_TYPE {
   paid
   refunded
 }
 
-enum RECEIPT_STATUS {
+enum INVOICE_STATUS {
   success
   failed
 }
@@ -163,6 +163,7 @@ enum CANCEL_REASON {
 enum COUNTER_TYPE {
   order
   receipt
+  invoice
 }
 
 model Session {
@@ -491,7 +492,7 @@ model Company {
   orders        Order[]
 
   transactions  Transaction[] @relation("company_transactions")
-  receipts      Receipt[]     @relation("company_receipt")
+  invoices      Invoice[]     @relation("company_invoice")
   counters      CompanyCounter[]  @relation("company_counter")
 
   onboarding    OnboardingSurvey? @relation("company_onboarding")
@@ -828,8 +829,8 @@ model Booking {
 model BookingService {
   id            String        @id               @default(uuid())
   
-  unitPrice     Int?          @map("unit_price")
-  duration      Int?
+  unitPrice     Int           @map("unit_price")
+  duration      Int
 
   startTime     DateTime      @map("start_time")
   endTime       DateTime      @map("end_time")
@@ -863,7 +864,7 @@ model Order {
   tag           String?       @unique
   status        OrderStatus   @default(unpaid)
   subtotal      Int
-  total         Int?
+  total         Int
   discount      Int?
   paymentMethod PaymentType?   @map("payment_method")
   paidAt        DateTime?     @map("paid_at")
@@ -876,7 +877,7 @@ model Order {
 
   bookings      Booking[]     @relation("booking_order")
   history       OrderBookingHistory[]           @relation("order_history")
-  receipts      Receipt[]     @relation("order_receipt")
+  invoices      Invoice[]     @relation("order_invoice")
   transactions  Transaction[] @relation("order_transaction")
 
   createdAt     DateTime      @default(now())   @map("created_at")
@@ -901,21 +902,21 @@ model OrderBookingHistory {
   @@map("order_booking_history")
 }
 
-model Receipt {
+model Invoice {
   id            String        @id               @default(uuid())
 
   tag           String?       @unique
 
-  type          RECEIPT_TYPE  @default(paid)
+  type          INVOICE_TYPE  @default(paid)
   amount        Int
-  status        RECEIPT_STATUS                  @default(success)
+  status        INVOICE_STATUS                  @default(success)
   snapshot      Json
 
   companyId     String        @map("company_id")
-  company       Company       @relation("company_receipt", fields: [companyId], references: [id])
+  company       Company       @relation("company_invoice", fields: [companyId], references: [id])
 
   orderId       String        @map("order_id")
-  order         Order         @relation("order_receipt", fields: [orderId], references: [id], onDelete: Cascade)
+  order         Order         @relation("order_invoice", fields: [orderId], references: [id], onDelete: Cascade)
 
   transaction   Transaction?
 
@@ -923,7 +924,7 @@ model Receipt {
 
   @@unique([companyId, tag])
   @@index([orderId])
-  @@map("receipts")
+  @@map("invoices")
 }
 
 model Transaction {
@@ -938,8 +939,8 @@ model Transaction {
   orderId       String        @map("order_id")
   order         Order         @relation("order_transaction", fields: [orderId], references: [id])
 
-  receiptId     String?       @unique           @map("receipt_id")
-  receipt       Receipt?      @relation(fields: [receiptId], references: [id])
+  invoiceId     String?       @unique           @map("invoice_id")
+  invoice       Invoice?      @relation(fields: [invoiceId], references: [id])
 
   createdAt     DateTime      @default(now())   @map("created_at")
 

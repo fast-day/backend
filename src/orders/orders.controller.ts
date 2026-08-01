@@ -28,7 +28,7 @@ import { GetOrdersDto } from "./dto/get-orders.dto";
 import { UnAuthorizedDto } from "src/shared/dto/errors.dto";
 import { CompanyGuard } from "src/access/guard/company.guard";
 import { OrderPaidDto } from "./dto/order-paid.dto";
-import { NewOrderCreateDto } from "./dto/order-create.dto";
+import { DraftOrderDto } from "./dto/order-create.dto";
 
 @ApiTags("Заказы")
 @Controller()
@@ -86,7 +86,7 @@ export class OrdersController {
     description: "ID Записи",
   })
   @ApiBody({
-    type: NewOrderCreateDto,
+    type: DraftOrderDto,
   })
   @ApiResponse({
     status: HttpStatus.OK,
@@ -101,17 +101,17 @@ export class OrdersController {
     status: HttpStatus.NOT_FOUND,
     description: "not found",
   })
-  @Post("orders/:booking_id")
+  @Post("orders/:booking_id/draft")
   @UseGuards(AuthGuard, LoadUserGuard, CompanyGuard, ScopeGuard)
-  @Scopes("orders:create")
+  @Scopes("orders:draft")
   @HttpCode(HttpStatus.OK)
-  create(
+  draft(
     @Req() req,
     @Param("booking_id") bookingId: string,
-    @Body() dto: NewOrderCreateDto,
+    @Body() dto: DraftOrderDto,
   ) {
     const companyId = req.user.companyId;
-    return this.ordersService.newOrder(dto, bookingId, companyId);
+    return this.ordersService.draft(dto, bookingId, companyId);
   }
 
   /*

@@ -29,6 +29,7 @@ import {
 import { DEFAULT_TIMEZONE } from "src/shared/constant/timezone.constant";
 import { fromZonedTime } from "date-fns-tz";
 import { GetCustomerBookingsDto } from "./dto/get-customer-bookings.dto";
+import { UpdateBookingServicesDto } from "./dto/booking-update-service.dto";
 
 @Injectable()
 export class BookingsService {
@@ -535,6 +536,80 @@ export class BookingsService {
     });
   }
 
+  async updateServiceCount(
+    bookingId: string,
+    dto: UpdateBookingServicesDto,
+    companyId: string,
+  ) {
+    const booking = await this.prismaService.booking.findFirst({
+      where: { id: bookingId, companyId },
+      select: { id: true, services: { select: { id: true } } },
+    });
+
+    if (!booking)
+      throw new HttpException(
+        {
+          status: HttpStatus.NOT_FOUND,
+          title: "Запись не найдена",
+          detail: "Не удалось найти запись",
+          meta: { booking_id: bookingId },
+        },
+        HttpStatus.NOT_FOUND,
+      );
+
+    const validIds = new Set(booking.services.map((s) => s.id));
+    const invalid = dto.services.filter(
+      (s) => !validIds.has(s.booking_service_id),
+    );
+
+    if (invalid.length > 0)
+      throw new HttpException(
+        {
+          status: HttpStatus.BAD_REQUEST,
+          title: "Некорректные услуги",
+          detail: "Часть услуг не принадлежит этой записи",
+          meta: {
+            booking_id: bookingId,
+            invalid_ids: invalid.map((s) => s.booking_service_id),
+          },
+        },
+        HttpStatus.BAD_REQUEST,
+      );
+
+    const services = this.prismaService.$transaction(
+      dto.services.map((s) =>
+        this.prismaService.bookingService.update({
+          where: { id: s.booking_service_id },
+          data: { count: s.count },
+          select: {
+            id: true,
+            unitPrice: true,
+            startTime: true,
+            endTime: true,
+            duration: true,
+            count: true,
+            service: {
+              select: {
+                id: true,
+                name: true,
+                avatar: true,
+                mark: true,
+                category: true,
+                price: { select: { price: true, costPrice: true } },
+                duration: true,
+              },
+            },
+          },
+        }),
+      ),
+    );
+
+    /*
+      ----- !!!! ПОДПРАВИТЬ ВЫВОД !!!! -----
+    */
+    return services;
+  }
+
   async getAll(userId: string, locationId: string, query: GetBookingsDto) {
     const { customer, status, date, tag, sort, ...pagination } = query;
     const { page, limit, skip } = getPaginationParams(pagination);
@@ -789,6 +864,7 @@ export class BookingsService {
         tag: true,
         status: true,
         comment: true,
+        orderId: true,
         location: {
           select: {
             id: true,
@@ -912,7 +988,7 @@ export class BookingsService {
             paymentMethod: true,
             paidAt: true,
             createdAt: true,
-            receipts: {
+            invoices: {
               select: {
                 id: true,
                 tag: true,
@@ -926,17 +1002,10 @@ export class BookingsService {
           },
         },
       },
-      orderBy: { createdAt: "asc" },
+      orderBy: { createdAt: "desc" },
     });
 
-    const allOrders = history.map((h) => h.order);
-    const hasCompletedOrder = allOrders.some(
-      (o) => o.status === "paid" && o.receipts.length > 0,
-    );
-
-    const visibleOrders = hasCompletedOrder
-      ? allOrders
-      : allOrders.filter((o) => o.status !== "cancelled");
+    const orders = history.map((h) => h.order);
 
     const { start, end } = getBookingTimeRange(booking.services);
 
@@ -947,6 +1016,7 @@ export class BookingsService {
       status: booking.status,
       tag: booking.tag,
       comment: booking.comment,
+      order_id: booking.orderId,
       date: formatDateInTimezone(start, timezone),
       start_time: formatBookingTime(start, timezone),
       end_time: formatBookingTime(end, timezone),
@@ -1012,7 +1082,14 @@ export class BookingsService {
           avatar: buildFileUrl(service.employee.avatar),
         },
       })),
-      orders: visibleOrders.map((o) => ({
+      invoice: {
+        total: booking.order?.total,
+        subtotal: booking.order?.subtotal,
+        status: booking.order?.status,
+        discount: booking.order?.discount,
+        order_id: booking.order?.id,
+      },
+      orders: orders.map((o) => ({
         id: o.id,
         status: o.status,
         tag: o.tag,
@@ -1020,14 +1097,14 @@ export class BookingsService {
         total: o.total,
         discount: o.discount,
         payment_method: o.paymentMethod,
-        paid_at: o.paidAt,
-        receipts: o.receipts.map((r) => ({
-          id: r.id,
-          tag: r.tag,
-          type: r.type,
-          amount: r.amount,
-          status: r.status,
-          created_at: r.createdAt,
+        paid_at: o.paidAt ? formatDateInTimezone(o.paidAt, timezone) : null,
+        invoices: o.invoices.map((i) => ({
+          id: i.id,
+          tag: i.tag,
+          type: i.type,
+          amount: i.amount,
+          status: i.status,
+          date: formatDateInTimezone(i.createdAt, timezone),
         })),
       })),
     };
