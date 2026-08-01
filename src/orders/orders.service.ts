@@ -567,7 +567,7 @@ export class OrdersService {
         companyId,
         amount: -chargeInvoice.amount,
         tag: invoiceTag,
-        type: "paid",
+        type: "refunded",
         snapshot: {
           order_id: updOrder.id,
           payment_method: updOrder.paymentMethod,
