@@ -19,6 +19,7 @@ import { OrderPaidDto } from "./dto/order-paid.dto";
 import { generateTag } from "src/shared/utils/generate-tag.util";
 import { getNextSequence } from "src/shared/utils/get-next-sequence.util";
 import { IBookingWithOrder, IDraftOrderParams } from "./types/draft-order.type";
+import { CalculatePriceDto } from "./dto/calculate-price.dto";
 
 @Injectable()
 export class OrdersService {
@@ -67,7 +68,7 @@ export class OrdersService {
         {
           status: HttpStatus.NOT_FOUND,
           title: "Платеж не найден",
-          detail: "Не найти платеж",
+          detail: "Не удалось найти платеж",
           meta: { order_id: orderId },
         },
         HttpStatus.NOT_FOUND,
@@ -79,8 +80,12 @@ export class OrdersService {
     return { ...order, timezone };
   }
 
-  private async findDetailById(orderId: string, companyId: string) {
-    const order = await this.prismaService.order.findFirst({
+  private async findDetailById(
+    orderId: string,
+    companyId: string,
+    t: Prisma.TransactionClient | PrismaService = this.prismaService,
+  ) {
+    const order = await t.order.findFirst({
       where: { id: orderId, companyId },
       select: {
         id: true,
@@ -151,7 +156,7 @@ export class OrdersService {
         {
           status: HttpStatus.NOT_FOUND,
           title: "Платеж не найден",
-          detail: "Не найти платеж",
+          detail: "Не удалось найти платеж",
           meta: { order_id: orderId },
         },
         HttpStatus.NOT_FOUND,
@@ -240,7 +245,7 @@ export class OrdersService {
     };
   }
 
-  private resolveOrder(
+  private async resolveOrder(
     t: Prisma.TransactionClient,
     booking: IBookingWithOrder,
     params: IDraftOrderParams,
@@ -348,7 +353,7 @@ export class OrdersService {
       );
 
     const subtotal: number = booking.services.reduce(
-      (sum, s) => sum + Number(s.unitPrice) + s.count,
+      (sum, s) => sum + Number(s.unitPrice) * s.count,
       0,
     );
     const discount = dto.discount ?? 0;
@@ -364,7 +369,7 @@ export class OrdersService {
         comment: dto.comment,
       });
 
-      return this.findDetailById(orderId, companyId);
+      return this.findDetailById(orderId, companyId, t);
     });
   }
 
@@ -612,6 +617,45 @@ export class OrdersService {
         })),
       };
     });
+  }
+
+  async calculatePrice(
+    bookingId: string,
+    companyId: string,
+    dto: CalculatePriceDto,
+  ) {
+    const booking = await this.prismaService.booking.findFirst({
+      where: { id: bookingId, companyId },
+      select: {
+        order: { select: { discount: true } },
+        services: { select: { id: true, unitPrice: true, count: true } },
+      },
+    });
+
+    if (!booking)
+      throw new HttpException(
+        {
+          status: HttpStatus.NOT_FOUND,
+          title: "Запись не найдена",
+          detail: "Не удалось найти запись",
+          meta: { booking_id: bookingId },
+        },
+        HttpStatus.NOT_FOUND,
+      );
+
+    const services = booking.services.map((s) => {
+      const override = dto.services?.find((d) => d.booking_service_id === s.id);
+      return { unit_price: s.unitPrice, count: override?.count ?? s.count };
+    });
+
+    const subtotal = services.reduce(
+      (sum, s) => sum + s.unit_price * s.count,
+      0,
+    );
+    const discount = dto.discount ?? booking.order?.discount ?? 0;
+    const total = subtotal - discount;
+
+    return { subtotal, total, discount };
   }
 
   async getAll(companyId: string, query: GetOrdersDto) {
