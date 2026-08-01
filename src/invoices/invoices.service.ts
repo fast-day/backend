@@ -1,4 +1,4 @@
-import { HttpException, HttpStatus, Injectable } from "@nestjs/common";
+import { HttpException, HttpStatus, Injectable, Logger } from "@nestjs/common";
 import { Prisma } from "@prisma/client";
 import { MinioService } from "src/minio/minio.service";
 import { PrismaService } from "src/prisma/prisma.service";
@@ -12,6 +12,8 @@ export class InvoicesService {
     private readonly prismaService: PrismaService,
     private readonly minioService: MinioService,
   ) {}
+
+  private readonly logger = new Logger(InvoicesService.name);
 
   async createInvoiceWithPdf(
     t: Prisma.TransactionClient,
@@ -42,6 +44,22 @@ export class InvoicesService {
     return invoice.id;
   }
 
+  private async safeGetFileStream(key: string, invoiceId: string) {
+    try {
+      return await this.minioService.getFileStream("invoices", key);
+    } catch {
+      throw new HttpException(
+        {
+          status: HttpStatus.NOT_FOUND,
+          title: "Файл не найден",
+          detail: "Документ отсутствует в базе",
+          meta: { invoice_id: invoiceId, file_key: key },
+        },
+        HttpStatus.NOT_FOUND,
+      );
+    }
+  }
+
   async download(invoiceId: string, companyId: string, res: Response) {
     const invoice = await this.prismaService.invoice.findFirst({
       where: { id: invoiceId, companyId },
@@ -59,10 +77,25 @@ export class InvoicesService {
         HttpStatus.NOT_FOUND,
       );
 
-    const stream = await this.minioService.getFileStream(
-      "invoices",
+    const stream = await this.safeGetFileStream(
       `${invoice.tag}.pdf`,
+      invoiceId,
     );
+
+    stream.on("error", (err) => {
+      this.logger.error(`Invoice stream failed: ${err.message}`, {
+        invoiceId,
+        fileKey: invoice.tag,
+      });
+      if (!res.headersSent) {
+        res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({
+          title: "Ошибка при отправке файла",
+          detail: "Не удаось передать документ",
+        });
+      } else {
+        res.destroy();
+      }
+    });
 
     res.set({
       "Content-Type": "application/pdf",
