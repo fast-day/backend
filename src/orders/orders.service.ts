@@ -38,6 +38,14 @@ export class OrdersService {
         paidAt: true,
         discount: true,
         paymentMethod: true,
+        company: {
+          select: {
+            locations: {
+              select: { address: { select: { timezone: true } } },
+              take: 1,
+            },
+          },
+        },
         isDeposit: true,
         createdAt: true,
         invoices: {
@@ -65,7 +73,10 @@ export class OrdersService {
         HttpStatus.NOT_FOUND,
       );
 
-    return order;
+    const timezone =
+      order.company.locations[0].address?.timezone ?? DEFAULT_TIMEZONE;
+
+    return { ...order, timezone };
   }
 
   async newOrder(dto: NewOrderCreateDto, bookingId: string, companyId: string) {
@@ -505,6 +516,19 @@ export class OrdersService {
         },
       });
 
+      const allInvoices = await t.invoice.findMany({
+        where: { orderId },
+        select: {
+          id: true,
+          tag: true,
+          amount: true,
+          status: true,
+          type: true,
+          createdAt: true,
+        },
+        orderBy: { createdAt: "desc" },
+      });
+
       return {
         id: updOrder.id,
         status: updOrder.status,
@@ -514,6 +538,14 @@ export class OrdersService {
         payment_method: updOrder.paymentMethod,
         is_payment: !!updOrder.paidAt,
         discount: updOrder.discount,
+        invoices: allInvoices.map((inv) => ({
+          id: inv.id,
+          tag: inv.tag,
+          amount: inv.amount,
+          status: inv.status,
+          type: inv.type,
+          date: formatDateInTimezone(inv.createdAt, order.timezone),
+        })),
       };
     });
   }
