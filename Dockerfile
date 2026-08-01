@@ -3,6 +3,7 @@ FROM node:24-alpine AS development
 WORKDIR /app
 
 COPY package*.json ./
+COPY assets/fonts ./assets/fonts
 COPY db ./db
 
 RUN yarn install
