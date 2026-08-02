@@ -1,12 +1,9 @@
 import { Injectable } from "@nestjs/common";
-import { PrismaService } from "src/prisma/prisma.service";
 import { CreateAddressDto } from "./dto/create.dto";
 import { Prisma } from "@prisma/client";
 
 @Injectable()
 export class AddressService {
-  constructor(private readonly prismaService: PrismaService) {}
-
   async create(
     t: Prisma.TransactionClient,
     dto: CreateAddressDto,
@@ -57,6 +54,8 @@ export class AddressService {
       region: address.region,
       country: address.country,
       post_code: address.post_code,
+      timezone: address.timezone,
+      timezone_offset: address.timezoneoffset,
       map: {
         lat: address.positionLat,
         lng: address.positionLng,

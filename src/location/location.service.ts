@@ -21,6 +21,7 @@ import {
   getPaginationParams,
 } from "src/shared/common/pagination/pagination";
 import { normalizePhone } from "src/shared/utils/phone";
+import { ScheduleService } from "src/schedule/schedule.service";
 
 @Injectable()
 export class LocationService {
@@ -28,6 +29,7 @@ export class LocationService {
     private readonly prismaService: PrismaService,
     private readonly addressService: AddressService,
     private readonly minioService: MinioService,
+    private readonly scheduleService: ScheduleService,
   ) {}
 
   async create(dto: LocationDto, userId: string, companyId: string) {
@@ -137,13 +139,20 @@ export class LocationService {
 
     const address = await this.addressService.create(t, dto, location.id);
 
-    await t.userLocation.create({
+    const userLocation = await t.userLocation.create({
       data: {
         userId,
         locationId: location.id,
         roleId,
       },
+      select: { id: true },
     });
+
+    await this.scheduleService.generateDefaultSchedule(
+      userLocation.id,
+      address.timezone,
+      t,
+    );
 
     return {
       ...location,
@@ -155,6 +164,13 @@ export class LocationService {
   async findById(id: string) {
     const location = await this.prismaService.location.findUnique({
       where: { id },
+      select: {
+        id: true,
+        avatar: true,
+        active: true,
+        name: true,
+        address: { select: { timezone: true } },
+      },
     });
 
     if (!location) throw new NotFoundException("Локация не найдена");

@@ -29,6 +29,7 @@ import { UnAuthorizedDto } from "src/shared/dto/errors.dto";
 import { CompanyGuard } from "src/access/guard/company.guard";
 import { OrderPaidDto } from "./dto/order-paid.dto";
 import { DraftOrderDto } from "./dto/order-create.dto";
+import { CalculatePriceDto } from "./dto/calculate-price.dto";
 
 @ApiTags("Заказы")
 @Controller()
@@ -112,6 +113,47 @@ export class OrdersController {
   ) {
     const companyId = req.user.companyId;
     return this.ordersService.draft(dto, bookingId, companyId);
+  }
+
+  /*
+    ===== ПЕРЕСЧЕТ ЗАКАЗА =====
+  */
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: "Пересчет заказа",
+  })
+  @ApiParam({
+    name: "booking_id",
+    example: "a81b90e4-5a76-4870-84be-c9732b9b22c1",
+    description: "ID Записи",
+  })
+  @ApiBody({
+    type: CalculatePriceDto,
+  })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    type: undefined,
+  })
+  @ApiResponse({
+    status: HttpStatus.UNAUTHORIZED,
+    description: "unauthorized",
+    type: UnAuthorizedDto,
+  })
+  @ApiResponse({
+    status: HttpStatus.NOT_FOUND,
+    description: "not found",
+  })
+  @Post("orders/:booking_id/calculate")
+  @UseGuards(AuthGuard, CompanyGuard, ScopeGuard)
+  @Scopes("orders:calculate")
+  @HttpCode(HttpStatus.OK)
+  calculate(
+    @Req() req,
+    @Param("booking_id") bookingId: string,
+    @Body() dto: CalculatePriceDto,
+  ) {
+    const companyId = req.user.companyId;
+    return this.ordersService.calculatePrice(bookingId, companyId, dto);
   }
 
   /*

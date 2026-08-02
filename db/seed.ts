@@ -71,6 +71,7 @@ const permissions = [
   "orders:draft",
   "orders:cancel",
   "orders:refund",
+  "orders:calculate",
 
   "invoice:download",
 ];
