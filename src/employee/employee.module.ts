@@ -8,6 +8,7 @@ import { AuthModule } from "src/auth/auth.module";
 import { RoleModule } from "src/role/role.module";
 import { MailModule } from "src/mail/mail.module";
 import { SettingsModule } from "src/settings/settings.module";
+import { ScheduleModule } from "src/schedule/schedule.module";
 
 @Module({
   imports: [
@@ -21,6 +22,7 @@ import { SettingsModule } from "src/settings/settings.module";
     }),
     MailModule,
     SettingsModule,
+    ScheduleModule,
   ],
   controllers: [EmployeeController],
   providers: [EmployeeService],

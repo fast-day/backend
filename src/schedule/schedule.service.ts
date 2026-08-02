@@ -1,18 +1,19 @@
 import { HttpException, HttpStatus, Injectable } from "@nestjs/common";
 import { PrismaService } from "src/prisma/prisma.service";
 import { ScheduleDto } from "./dto/schedule.dto";
-import { UserService } from "src/user/user.service";
 import { getFullName } from "src/shared/utils/get-full-name.util";
 import { fromZonedTime } from "date-fns-tz";
 import { DEFAULT_TIMEZONE } from "src/shared/constant/timezone.constant";
 import { formatIntervalTime } from "src/shared/utils/format-time.util";
+import { eachDayOfInterval } from "date-fns/eachDayOfInterval";
+import { format } from "date-fns/format";
+import { Prisma } from "@prisma/client";
+import { normalizeToEpochTime } from "./utils/normalize-time-util";
+import { addDays } from "date-fns/addDays";
 
 @Injectable()
 export class ScheduleService {
-  constructor(
-    private readonly prismaService: PrismaService,
-    private readonly userService: UserService,
-  ) {}
+  constructor(private readonly prismaService: PrismaService) {}
 
   private async getUserLocationWithTimezone(
     userId: string,
@@ -42,6 +43,51 @@ export class ScheduleService {
       userLocationId: user.id,
       timezone: user.location.address?.timezone ?? DEFAULT_TIMEZONE,
     };
+  }
+
+  async generateDefaultSchedule(
+    userLocationId: string,
+    timezone: string,
+    t: Prisma.TransactionClient | PrismaService = this.prismaService,
+  ) {
+    const now = new Date();
+    const targetDays = eachDayOfInterval({ start: now, end: addDays(now, 6) });
+
+    return Promise.all(
+      targetDays.map((d) =>
+        this.createDefaultScheduleDay(t, userLocationId, d, timezone),
+      ),
+    );
+  }
+
+  private async createDefaultScheduleDay(
+    t: Prisma.TransactionClient,
+    userLocationId: string,
+    day: Date,
+    timezone: string,
+  ) {
+    const dateStr = format(day, "yyyy-MM-dd");
+
+    const startUtc = fromZonedTime(`${dateStr}T09:00`, timezone);
+    const endUtc = fromZonedTime(`${dateStr}T18:00`, timezone);
+
+    const schedule = await t.schedule.create({
+      data: {
+        userLocationId,
+        date: fromZonedTime(dateStr, timezone),
+      },
+      select: { id: true },
+    });
+
+    await t.scheduleInterval.create({
+      data: {
+        scheduleId: schedule.id,
+        start: normalizeToEpochTime(startUtc),
+        end: normalizeToEpochTime(endUtc),
+      },
+    });
+
+    return schedule;
   }
 
   async create(dto: ScheduleDto, locationId: string) {

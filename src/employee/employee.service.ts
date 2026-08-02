@@ -37,6 +37,8 @@ import {
 } from "src/shared/common/pagination/pagination";
 import { normalizePhone } from "src/shared/utils/phone";
 import { getFullName } from "src/shared/utils/get-full-name.util";
+import { ScheduleService } from "src/schedule/schedule.service";
+import { DEFAULT_TIMEZONE } from "src/shared/constant/timezone.constant";
 
 @Injectable()
 export class EmployeeService {
@@ -48,6 +50,7 @@ export class EmployeeService {
     private readonly roleService: RoleService,
     private readonly mailService: MailService,
     private readonly settingService: SettingsService,
+    private readonly scheduleService: ScheduleService,
   ) {}
 
   async findById(id: string): Promise<EmployeeFirst> {
@@ -154,8 +157,11 @@ export class EmployeeService {
   //   console.log({ email, name, locationId });
   // }
 
+  /**
+    !!! ========== ПРОВЕСТИ РЕВЬЮ ДАННОЙ РУЧКИ  ========== !!!
+  **/
   async inviteCreate(dto: EmployeeDto, companyId: string) {
-    await this.locationService.findById(dto.location_id);
+    const location = await this.locationService.findById(dto.location_id);
     await this.roleService.findById(dto.role);
 
     const isExistUser = await this.prismaService.user.findUnique({
@@ -197,6 +203,7 @@ export class EmployeeService {
         },
         select: {
           isBanned: true,
+          id: true,
           user: {
             select: {
               id: true,
@@ -217,6 +224,11 @@ export class EmployeeService {
           },
         },
       });
+
+      await this.scheduleService.generateDefaultSchedule(
+        user.id,
+        location.address?.timezone ?? DEFAULT_TIMEZONE,
+      );
 
       await this.mailService.sendLocationAddedNotify(
         dto.email,
@@ -292,11 +304,11 @@ export class EmployeeService {
     } satisfies InviteDto;
 
     const { url } = await this.invite(data, InviteAction.invite);
-    // await this.mailService.sendLocationAddedNotify(
-    //   dto.email,
-    //   `${dto.first_name} ${dto.last_name}`,
-    //   dto.location_id,
-    // );
+
+    await this.scheduleService.generateDefaultSchedule(
+      userLocation.id,
+      location.address?.timezone ?? DEFAULT_TIMEZONE,
+    );
 
     await this.mailService.sendInviteNotify(
       dto.email,
