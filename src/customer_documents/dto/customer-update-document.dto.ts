@@ -1,5 +1,29 @@
 import { ApiProperty } from "@nestjs/swagger";
-import { IsBoolean, IsObject, IsOptional, IsString } from "class-validator";
+import { Type } from "class-transformer";
+import {
+  IsArray,
+  IsBoolean,
+  IsOptional,
+  IsString,
+  ValidateNested,
+} from "class-validator";
+
+export class BlockDto {
+  @IsString()
+  id!: string;
+
+  @IsString()
+  type!: string;
+
+  @IsOptional()
+  props?: unknown;
+
+  @IsOptional()
+  content?: unknown;
+
+  @IsOptional()
+  children?: unknown;
+}
 
 export class CustomerUpdateDocumentDto {
   @ApiProperty({
@@ -12,13 +36,15 @@ export class CustomerUpdateDocumentDto {
   name?: string;
 
   @ApiProperty({
-    example: "JSON",
+    example: "[]",
     description: "Контент",
     required: false,
   })
-  @IsObject()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => BlockDto)
   @IsOptional()
-  content?: Record<string, any>;
+  content?: BlockDto[];
 
   @ApiProperty({
     example: false,

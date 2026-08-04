@@ -8,6 +8,7 @@ import {
 import { buildFileUrl } from "src/shared/utils/build-url";
 import { getFullName } from "src/shared/utils/get-full-name.util";
 import { CustomerUpdateDocumentDto } from "./dto/customer-update-document.dto";
+import { Prisma } from "@prisma/client";
 
 @Injectable()
 export class CustomerDocumentsService {
@@ -256,7 +257,7 @@ export class CustomerDocumentsService {
       where: { id: documentId, customerCompanyId: customerId, authorId },
       data: {
         name: dto.name,
-        content: dto.content,
+        content: dto.content as unknown as Prisma.InputJsonValue,
         isPinned: dto.is_pinned,
         isArchived: dto.is_archived,
         isLocked: dto.is_locked,
