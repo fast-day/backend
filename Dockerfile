@@ -3,8 +3,6 @@ FROM node:24-alpine AS development
 WORKDIR /app
 
 COPY package*.json ./
-COPY assets/fonts ./assets/fonts
-COPY db ./db
 
 RUN yarn install
 
@@ -24,6 +22,7 @@ COPY --from=development /app/node_modules ./node_modules
 COPY --from=development /app/package*.json ./
 COPY --from=development /app/dist ./dist
 COPY --from=development /app/db ./db
+COPY --from=development /app/assets/fonts ./assets/fonts
 
 EXPOSE 8080
 
