@@ -5,6 +5,13 @@ import { PrismaService } from "src/prisma/prisma.service";
 import { ICreateInvoiceParams } from "./types/create-invoice.type";
 import { generateInvoicePdf } from "./utils/invoice-pdf.util";
 import { Response } from "express";
+import { formatDateInTimezone } from "src/bookings/utils/format-time.util";
+import { DEFAULT_TIMEZONE } from "src/shared/constant/timezone.constant";
+import { GetInvoicesDto } from "./dto/get-invoices.dto";
+import {
+  buildPaginatedResponse,
+  getPaginationParams,
+} from "src/shared/common/pagination/pagination";
 
 @Injectable()
 export class InvoicesService {
@@ -103,5 +110,62 @@ export class InvoicesService {
     });
 
     stream.pipe(res);
+  }
+
+  async getAll(companyId: string, query: GetInvoicesDto) {
+    const { status, ...pagination } = query;
+    const { page, limit, skip } = getPaginationParams(pagination);
+
+    const where: Prisma.InvoiceWhereInput = {
+      companyId,
+      ...(status && { status }),
+    };
+
+    const [invoices, total] = await Promise.all([
+      this.prismaService.invoice.findMany({
+        where,
+        select: {
+          id: true,
+          tag: true,
+          type: true,
+          amount: true,
+          status: true,
+          orderId: true,
+          createdAt: true,
+          company: {
+            select: {
+              locations: {
+                select: {
+                  address: {
+                    select: { timezone: true },
+                  },
+                },
+                take: 1,
+              },
+            },
+          },
+        },
+        skip,
+        take: limit,
+      }),
+      this.prismaService.invoice.count({ where }),
+    ]);
+
+    const data = invoices.map((invoice) => {
+      const timezone =
+        invoice.company.locations[0].address?.timezone ?? DEFAULT_TIMEZONE;
+
+      return {
+        id: invoice.id,
+        order_id: invoice.orderId,
+        tag: invoice.tag,
+        type: invoice.type,
+        amount: invoice.amount,
+        status: invoice.status,
+        date: formatDateInTimezone(invoice.createdAt, timezone),
+      };
+    });
+
+    return buildPaginatedResponse(data, total, page, limit);
   }
 }

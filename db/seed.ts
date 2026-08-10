@@ -74,6 +74,7 @@ const permissions = [
   "orders:calculate",
 
   "invoice:download",
+  "invoices:read",
 ];
 
 const employeePermissions = [
