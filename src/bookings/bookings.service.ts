@@ -865,6 +865,9 @@ export class BookingsService {
         status: true,
         comment: true,
         orderId: true,
+        updatedAt: true,
+        cancelledAt: true,
+        cancelReason: true,
         location: {
           select: {
             id: true,
@@ -1020,6 +1023,9 @@ export class BookingsService {
       date: formatDateInTimezone(start, timezone),
       start_time: formatBookingTime(start, timezone),
       end_time: formatBookingTime(end, timezone),
+      cancel_reason: booking.cancelReason,
+      updated_date: formatDateInTimezone(booking.updatedAt, timezone),
+      updated_time: formatBookingTime(booking.updatedAt, timezone),
       location: {
         id: booking.location.id,
         name: booking.location.name,

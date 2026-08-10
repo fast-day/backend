@@ -1,8 +1,10 @@
 import {
   Controller,
   Get,
+  HttpCode,
   HttpStatus,
   Param,
+  Query,
   Req,
   Res,
   UseGuards,
@@ -22,6 +24,7 @@ import { AuthGuard } from "src/auth/guard/auth.guard";
 import { Scopes } from "src/access/decorator/scopes.decorator";
 import { CompanyGuard } from "src/access/guard/company.guard";
 import { Response } from "express";
+import { GetInvoicesDto } from "./dto/get-invoices.dto";
 
 @ApiTags("Чеки")
 @Controller()
@@ -59,5 +62,34 @@ export class InvoicesController {
   ) {
     const companyId = req.user.companyId;
     return this.invoicesService.download(invoiceId, companyId, res);
+  }
+
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: "Получение всех чеков",
+    description: "Возвращает список всех чеков",
+  })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: "Список чеков",
+    type: undefined,
+    isArray: true,
+  })
+  @ApiResponse({
+    status: HttpStatus.UNAUTHORIZED,
+    description: "unauthorized",
+    type: UnAuthorizedDto,
+  })
+  @ApiResponse({
+    status: HttpStatus.NOT_FOUND,
+    description: "not found",
+  })
+  @Get("invoice")
+  @UseGuards(AuthGuard, LoadUserGuard, CompanyGuard, ScopeGuard)
+  @Scopes("invoices:read")
+  @HttpCode(HttpStatus.OK)
+  getAll(@Query() query: GetInvoicesDto, @Req() req) {
+    const companyId = req.user.companyId;
+    return this.invoicesService.getAll(companyId, query);
   }
 }
