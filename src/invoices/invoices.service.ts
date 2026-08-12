@@ -132,6 +132,11 @@ export class InvoicesService {
           status: true,
           orderId: true,
           createdAt: true,
+          order: {
+            select: {
+              tag: true,
+            },
+          },
           company: {
             select: {
               locations: {
@@ -158,6 +163,7 @@ export class InvoicesService {
       return {
         id: invoice.id,
         order_id: invoice.orderId,
+        order_tag: invoice.order.tag,
         tag: invoice.tag,
         type: invoice.type,
         amount: invoice.amount,

@@ -64,6 +64,9 @@ export class InvoicesController {
     return this.invoicesService.download(invoiceId, companyId, res);
   }
 
+  /*
+    ===== ПОЛУЧЕНИЕ ЧЕКОВ =====
+  */
   @ApiBearerAuth()
   @ApiOperation({
     summary: "Получение всех чеков",
