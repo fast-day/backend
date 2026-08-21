@@ -152,6 +152,9 @@ export class InvoicesService {
         },
         skip,
         take: limit,
+        orderBy: {
+          createdAt: "desc",
+        },
       }),
       this.prismaService.invoice.count({ where }),
     ]);
