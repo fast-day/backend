@@ -5,7 +5,10 @@ import {
   IsNumber,
   IsOptional,
   IsString,
+  ValidateNested,
 } from "class-validator";
+import { BookingServiceOverrideDto } from "./calculate-price.dto";
+import { Type } from "class-transformer";
 
 export class OrderCreateDto {
   @IsEnum(OrderStatus)
@@ -41,4 +44,10 @@ export class DraftOrderDto {
   @IsNumber()
   @IsOptional()
   discount?: number;
+
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => BookingServiceOverrideDto)
+  @IsOptional()
+  services?: BookingServiceOverrideDto[];
 }

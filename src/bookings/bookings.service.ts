@@ -14,7 +14,6 @@ import {
 } from "src/shared/common/pagination/pagination";
 import { BookingSortOrder, GetBookingsDto } from "./dto/get-bookings.dto";
 import { normalizePhone } from "src/shared/utils/phone";
-import { OrdersService } from "src/orders/orders.service";
 import { getFullName } from "src/shared/utils/get-full-name.util";
 import { BookingDtoService } from "./dto/booking-base.dto";
 import { calcEndTimeDate } from "src/shared/utils/calc-end-time.util";
@@ -35,7 +34,6 @@ import { UpdateBookingServicesDto } from "./dto/booking-update-service.dto";
 export class BookingsService {
   public constructor(
     private readonly prismaService: PrismaService,
-    private readonly orderService: OrdersService,
     // private readonly mailService: MailService,
   ) {}
 
@@ -536,7 +534,8 @@ export class BookingsService {
     });
   }
 
-  async updateServiceCount(
+  public async updateServiceCount(
+    t: Prisma.TransactionClient,
     bookingId: string,
     dto: UpdateBookingServicesDto,
     companyId: string,
@@ -576,11 +575,11 @@ export class BookingsService {
         HttpStatus.BAD_REQUEST,
       );
 
-    const services = this.prismaService.$transaction(
-      dto.services.map((s) =>
-        this.prismaService.bookingService.update({
+    const services = dto.services.map(
+      async (s) =>
+        await t.bookingService.update({
           where: { id: s.booking_service_id },
-          data: { count: s.count },
+          data: { count: s.booking_service_count },
           select: {
             id: true,
             unitPrice: true,
@@ -601,7 +600,6 @@ export class BookingsService {
             },
           },
         }),
-      ),
     );
 
     /*

@@ -44,7 +44,6 @@ import { UnAuthorizedDto } from "src/shared/dto/errors.dto";
 import { GetBookingsDto } from "./dto/get-bookings.dto";
 import { BookingCustomerResponseDto } from "./dto/booking-customer-response.dto";
 import { GetCustomerBookingsDto } from "./dto/get-customer-bookings.dto";
-import { UpdateBookingServicesDto } from "./dto/booking-update-service.dto";
 
 @ApiTags("Бронирование")
 @Controller()
@@ -77,31 +76,6 @@ export class BookingsController {
   create(@Body() dto: BookingCreateDto, @Req() req) {
     const companyId = req.user.companyId;
     return this.bookingsService.create(dto, companyId);
-  }
-
-  @ApiBearerAuth()
-  @ApiOperation({
-    summary: "Изменение кол-ва услуг",
-  })
-  @ApiBody({
-    type: UpdateBookingServicesDto,
-  })
-  @ApiResponse({
-    status: HttpStatus.UNAUTHORIZED,
-    description: "unauthorized",
-    type: UnAuthorizedDto,
-  })
-  @Put("booking/services/:booking_id")
-  @UseGuards(AuthGuard, LoadUserGuard, CompanyGuard, ScopeGuard)
-  @Scopes("booking:update")
-  @HttpCode(HttpStatus.OK)
-  updateServiceCount(
-    @Param("booking_id") bookingId: string,
-    @Body() dto: UpdateBookingServicesDto,
-    @Req() req,
-  ) {
-    const companyId = req.user.companyId;
-    return this.bookingsService.updateServiceCount(bookingId, dto, companyId);
   }
 
   @ApiBearerAuth()

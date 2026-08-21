@@ -21,12 +21,14 @@ import { getNextSequence } from "src/shared/utils/get-next-sequence.util";
 import { IBookingWithOrder, IDraftOrderParams } from "./types/draft-order.type";
 import { CalculatePriceDto } from "./dto/calculate-price.dto";
 import { InvoicesService } from "src/invoices/invoices.service";
+import { BookingsService } from "src/bookings/bookings.service";
 
 @Injectable()
 export class OrdersService {
   public constructor(
     private readonly prismaService: PrismaService,
     private readonly invoiceService: InvoicesService,
+    private readonly bookingService: BookingsService,
   ) {}
 
   private async findById(orderId: string, companyId: string) {
@@ -356,14 +358,28 @@ export class OrdersService {
         HttpStatus.BAD_REQUEST,
       );
 
-    const subtotal: number = booking.services.reduce(
-      (sum, s) => sum + Number(s.unitPrice) * s.count,
-      0,
-    );
-    const discount = dto.discount ?? 0;
-    const total = subtotal - discount;
-
     return this.prismaService.$transaction(async (t) => {
+      if (dto.services?.length) {
+        // eslint-disable-next-line @typescript-eslint/no-floating-promises
+        await this.bookingService.updateServiceCount(
+          t,
+          bookingId,
+          { services: dto.services },
+          companyId,
+        );
+      }
+
+      const updateServices = await t.bookingService.findMany({
+        where: { bookingId },
+      });
+
+      const subtotal: number = updateServices.reduce(
+        (sum, s) => sum + Number(s.unitPrice) * s.count,
+        0,
+      );
+      const discount = dto.discount ?? 0;
+      const total = subtotal - discount;
+
       const orderId = await this.resolveOrder(t, booking, {
         company_id: companyId,
         booking_id: bookingId,
@@ -648,7 +664,10 @@ export class OrdersService {
 
     const services = booking.services.map((s) => {
       const override = dto.services?.find((d) => d.booking_service_id === s.id);
-      return { unit_price: s.unitPrice, count: override?.count ?? s.count };
+      return {
+        unit_price: s.unitPrice,
+        count: override?.booking_service_count ?? s.count,
+      };
     });
 
     const subtotal = services.reduce(

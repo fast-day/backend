@@ -14,7 +14,7 @@ export class BookingServiceOverrideDto {
 
   @IsInt()
   @Min(1)
-  count!: number;
+  booking_service_count!: number;
 }
 
 export class CalculatePriceDto {
