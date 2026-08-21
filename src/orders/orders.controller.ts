@@ -145,7 +145,7 @@ export class OrdersController {
   })
   @Post("orders/:booking_id/calculate")
   @UseGuards(AuthGuard, CompanyGuard, ScopeGuard)
-  @Scopes("orders:calculate")
+  // @Scopes("orders:calculate")
   @HttpCode(HttpStatus.OK)
   calculate(
     @Req() req,
