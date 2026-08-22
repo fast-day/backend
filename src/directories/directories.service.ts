@@ -321,7 +321,7 @@ export class DirectoriesService {
     }));
   }
 
-  async employeeSchedule(
+  async employeeSlots(
     userId: string,
     locationId: string,
     date: string,

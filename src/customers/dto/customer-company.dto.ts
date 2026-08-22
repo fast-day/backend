@@ -1,6 +1,7 @@
 import { ApiProperty } from "@nestjs/swagger";
 import {
   IsBoolean,
+  IsEmail,
   IsNotEmpty,
   IsOptional,
   IsPhoneNumber,
@@ -31,6 +32,14 @@ export class CustomerCompanyDto {
   @IsString()
   @IsOptional()
   last_name?: string;
+
+  @ApiProperty({
+    example: "Email",
+    description: "example@gmail.com",
+  })
+  @IsEmail()
+  @IsOptional()
+  email?: string;
 
   @ApiProperty({
     example: "Толян - постоянный клиент",

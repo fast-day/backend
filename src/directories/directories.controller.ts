@@ -191,17 +191,15 @@ export class DirectoriesController {
     ===== РАСПИСАНИЕ СОТРУДНИКА И СВОБОДНЫЕ СЛОТЫ =====
   **/
   @ApiBearerAuth()
-  @ApiOperation({ summary: "Расписание сотрудника и свободные слоты" })
-  @Get("employee/schedule/:user_id/:location_id")
-  // @UseGuards(AuthGuard, LoadUserGuard, CompanyGuard, ScopeGuard)
-  // @Scopes("directory:employee-schedule")
-  getCustomerSchedule(
+  @ApiOperation({ summary: "Свободные слоты сотрудника" })
+  @Get("employee/slots/:user_id/:location_id")
+  getCustomerSlots(
     @Param("user_id") userId: string,
     @Param("location_id") locationId: string,
     @Query("date") date: string,
     @Query("duration") duration: number,
   ) {
-    return this.directoriesService.employeeSchedule(
+    return this.directoriesService.employeeSlots(
       userId,
       locationId,
       date,
