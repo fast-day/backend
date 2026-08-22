@@ -8,7 +8,7 @@ import { CustomerJwtPayload } from "./types/jwt.payload";
 import { CustomerTokenService } from "./token/token.service";
 import { JwtService } from "@nestjs/jwt";
 import { buildFileUrl } from "src/shared/utils/build-url";
-import { SmsService } from "src/sms/sms.service";
+// import { SmsService } from "src/sms/sms.service";
 import {
   buildPaginatedResponse,
   getPaginationParams,
@@ -28,6 +28,7 @@ import {
 } from "src/bookings/dto/get-bookings.dto";
 import { getDayRange } from "src/bookings/utils/day-range.util";
 import { DEFAULT_TIMEZONE } from "src/shared/constant/timezone.constant";
+import { CustomerChecksService } from "./customer-checks.service";
 
 @Injectable()
 export class CustomersService {
@@ -36,7 +37,8 @@ export class CustomersService {
     private readonly tokenService: CustomerTokenService,
     private readonly jwtService: JwtService,
     private readonly redisService: RedisService,
-    private readonly smsService: SmsService,
+    private readonly customerChecksService: CustomerChecksService,
+    // private readonly smsService: SmsService,
   ) {}
   async firstByAccount(phone: string) {
     const customer = await this.prismaService.customerAccount.findUnique({
@@ -159,81 +161,15 @@ export class CustomersService {
     return { access_token: accessToken, refresh_token: refreshToken };
   }
 
-  //                                            ### NOTE ###
-  // В КОМПАНИИ МОЖНО СОЗДАТЬ ПОЛЬЗОВАТЕЛЯ И ЗАПИСАТЬ ЕГО В КОМПАНИЮ ДАЖЕ КОГДА ЕГО НЕ СУЩЕСТВУЕТ В CUSTOMERS
-  // ПОКА ТЕСТОВЫЙ ВАРИАНТ КОТОРЫЙ ДОБАВЛЯЕТ СУЩЕСТВУЮЩЕГО CUSTOMER В КОМПАНИЮ
-
-  /** 
-    СМОТРИ, ЗНАЧИТ МЫ БЕРЕМ В БОДИ ПРОКИДЫВАЕМ CUSTOMER_PHONE И ДРУГИЕ ПОЛЯ КОТОРЫЕ НЕОБХОДИМЫ ДЛЯ СОЗДАНИЯ КЛИЕНТА В КОМПАНИИ
-    
-    ТАК... И ЗАТЕМ МЫ ДОЛЖНЫ ПРОДЕЛАТЬ РАБОТУ НАД ПРОВЕРКОЙ СУЩЕСТВУЕТ ЛИ ТАКОЙ КЛИЕНТ В СИСТЕМЕ - ВО ВСЕЙ ИНФРАСТРУКТУРЕ 
-    ЕСЛИ КЛИЕНТА НЕ СУЩЕСТВУЕТ, ТО СОЗДАЕМ ЕГО В CUSTOMERS И СОЗДАЕМ CUSTOMER ACCOUNT ПРОКИНУВ ТУДА ТОЛЬКО НОМЕР ТЕЛЕФОНА
-    ЕСЛИ СУЩЕСТВУЕТ, ТО ПРОСТО СОЗДАЕМ CUSTOMER COMPANY
-
-    И ЭТО НАМ ДАСТ ВОЗМОЖНОСТЬ ЗАПИСЫВАТЬ НЕАВТОРИЗОВАННОГО КЛИЕНТА НА УСЛУГИ КОМПАНИИ, ЧТО В ДАЛЬНЕЙШЕМ
-    КОГДА КЛИЕНТ ЗАЙДЕТ В АККАУНТ У НЕГО БУДУТ ЕГО ЗАПИСИ И ИСТОРИЯ
-
-    ** ПОСЛЕ КАК КЛИЕНТ ЗАХОЧЕ ПОСМОТРЕТЬ СВОИ ЗАПИСИ ИЛИ ЗАПИСАТЬ САМОСТОЯТЕЛЬНО, ВОЙДЯ В АККАУНТ ВСЯ ИСТОРИЯ ЗАКАЗОВ БУДЕТ У НЕГО НА РУКАХ
-  **/
-  async checkCreateCustomerForCompany(
-    phone: string,
-    firstName: string,
-    lastName?: string,
-  ): Promise<string> {
-    try {
-      const customer = await this.prismaService.customer.findUnique({
-        where: { phone },
-        select: { id: true },
-      });
-
-      if (customer) {
-        return customer.id;
-      }
-
-      const createCustomer = await this.prismaService.$transaction(
-        async (t) => {
-          const customer = await t.customer.create({
-            data: {
-              phone,
-              firstName,
-              lastName,
-              phoneNormalized: normalizePhone(phone),
-            },
-            select: { id: true },
-          });
-          await t.customerAccount.create({
-            data: {
-              phone: phone,
-              customerId: customer.id,
-            },
-          });
-
-          return customer.id;
-        },
-      );
-
-      return createCustomer;
-    } catch (err: any) {
-      if (err.code === "P2002") {
-        const customer = await this.prismaService.customer.findUnique({
-          where: { phone },
-          select: { id: true },
-        });
-
-        return customer!.id;
-      }
-      throw err;
-    }
-  }
-
   /**
     ===== СОЗДАНИЕ КЛИЕНТА ДЛЯ КОМПАНИИ =====
   **/
   async createForCompany(dto: CustomerCompanyDto, companyId: string) {
-    const customerId = await this.checkCreateCustomerForCompany(
+    const customerId = await this.customerChecksService.checkExistCustomer(
       dto.phone,
       dto.first_name,
       dto.last_name,
+      dto.email,
     );
 
     const findCustomer = await this.prismaService.customerCompany.findUnique({

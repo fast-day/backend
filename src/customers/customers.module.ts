@@ -6,6 +6,7 @@ import { JwtModule } from "@nestjs/jwt";
 import { CustomerTokenService } from "./token/token.service";
 import { JwtCustomerStrategy } from "./strategies/jwt.strategy";
 import { SmsModule } from "src/sms/sms.module";
+import { CustomerChecksService } from "./customer-checks.service";
 
 @Module({
   imports: [
@@ -17,6 +18,12 @@ import { SmsModule } from "src/sms/sms.module";
     SmsModule,
   ],
   controllers: [CustomersController],
-  providers: [CustomersService, CustomerTokenService, JwtCustomerStrategy],
+  providers: [
+    CustomersService,
+    CustomerTokenService,
+    JwtCustomerStrategy,
+    CustomerChecksService,
+  ],
+  exports: [CustomerChecksService],
 })
 export class CustomersModule {}
