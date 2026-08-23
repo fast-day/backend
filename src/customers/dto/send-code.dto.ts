@@ -8,7 +8,7 @@ export class SendCodeDto {
   })
   @IsPhoneNumber("RU")
   @IsNotEmpty({ message: "Обязательное поле" })
-  phone: string;
+  phone!: string;
 }
 
 export class SendCodeResponseDto {
@@ -17,5 +17,5 @@ export class SendCodeResponseDto {
     description: "Статус",
   })
   @IsBoolean()
-  success: boolean;
+  success!: boolean;
 }
