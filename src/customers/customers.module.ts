@@ -7,6 +7,8 @@ import { CustomerTokenService } from "./token/token.service";
 import { JwtCustomerStrategy } from "./strategies/jwt.strategy";
 import { SmsModule } from "src/sms/sms.module";
 import { CustomerChecksService } from "./customer-checks.service";
+import { CustomersAppController } from "./customers-app.controller";
+import { CustomersAppService } from "./customers-app.service";
 
 @Module({
   imports: [
@@ -17,12 +19,13 @@ import { CustomerChecksService } from "./customer-checks.service";
     RedisModule,
     SmsModule,
   ],
-  controllers: [CustomersController],
+  controllers: [CustomersController, CustomersAppController],
   providers: [
     CustomersService,
     CustomerTokenService,
     JwtCustomerStrategy,
     CustomerChecksService,
+    CustomersAppService,
   ],
   exports: [CustomerChecksService],
 })
