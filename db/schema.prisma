@@ -250,9 +250,6 @@ model User {
 
   locations     UserLocation[] @relation("user_location")
   services      UserService[]  @relation("user_service")
-
-  // В БУДУЩЕМ УБРАТЬ
-  // bookings      Booking[]      @relation("booking_employee")
   
   settings      Settings?      @relation("user_setting")
   onboardingProgress           OnboardingProgress?      @relation("user_onboarding_progress")
@@ -411,9 +408,6 @@ model Address {
   positionLat   Decimal?      @map("position_lat")
   positionLng   Decimal?      @map("position_lng")
 
-  // company       Company?      @relation("company_address", fields: [companyId], references: [id], onDelete: Cascade)
-  // companyId     String?       @unique           @map("company_id")
-
   location      Location?     @relation("location_address", fields: [locationId], references: [id], onDelete: Cascade)
   locationId    String?       @unique           @map("location_id")
   
@@ -464,7 +458,6 @@ model Company {
 
   currency      CURRENCY
 
-  // address       Address?      @relation("company_address")
   logo          String?
 
   users         User[]        @relation("company_user")
@@ -861,7 +854,7 @@ model Order {
 
   publicCode    Int           @unique           @default(autoincrement())       @map("public_code")
 
-  tag           String?       @unique
+  tag           String?
   status        OrderStatus   @default(unpaid)
   subtotal      Int
   total         Int
@@ -905,7 +898,7 @@ model OrderBookingHistory {
 model Invoice {
   id            String        @id               @default(uuid())
 
-  tag           String?       @unique
+  tag           String?       // @unique
 
   type          INVOICE_TYPE  @default(paid)
   amount        Int
