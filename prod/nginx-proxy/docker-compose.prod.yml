@@ -1,12 +1,15 @@
 services:
   nginx-proxy:
-    build: .
+    container_name: nginx
+    build: .  
     restart: always
     ports:
       - "80:80"
+#      - "443:443"
     networks:
       - shared
 
 networks:
   shared:
     external: true
+
