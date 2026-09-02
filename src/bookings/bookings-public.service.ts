@@ -183,6 +183,7 @@ export class BookingsPublicService {
 
     return services.map((service) => ({
       ...service,
+      avatar: buildFileUrl(service.avatar),
       price: {
         price: service.price?.price,
         const_price: service.price?.costPrice,
@@ -197,6 +198,65 @@ export class BookingsPublicService {
         time_end: service.discount?.timeEnd,
       },
     }));
+  }
+
+  async service(serviceId: string) {
+    const service = await this.prismaService.service.findUnique({
+      where: { id: serviceId },
+      select: {
+        id: true,
+        name: true,
+        duration: true,
+        price: {
+          select: {
+            price: true,
+            costPrice: true,
+            requiresDeposit: true,
+            depositPercent: true,
+            cancellationDeadlineHours: true,
+          },
+        },
+        discount: {
+          select: {
+            price: true,
+            days: true,
+            timeStart: true,
+            timeEnd: true,
+          },
+        },
+        category: true,
+        avatar: true,
+      },
+    });
+
+    if (!service)
+      throw new HttpException(
+        {
+          title: "Услуга не найдеа",
+          description: "Не удалось загрузить информацию",
+          detail: { service_id: serviceId },
+          status: HttpStatus.NOT_FOUND,
+        },
+        HttpStatus.NOT_FOUND,
+      );
+
+    return {
+      ...service,
+      avatar: buildFileUrl(service.avatar),
+      price: {
+        price: service.price?.price,
+        const_price: service.price?.costPrice,
+        requires_deposit: service.price?.requiresDeposit,
+        deposit_percent: service.price?.depositPercent,
+        cancellation_deadline_hours: service.price?.cancellationDeadlineHours,
+      },
+      discount: {
+        price: service.discount?.price,
+        days: service.discount?.days,
+        time_start: service.discount?.timeStart,
+        time_end: service.discount?.timeEnd,
+      },
+    };
   }
 
   async createBooking(dto: WidgetBookingCreateDto, publicName: string) {

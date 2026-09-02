@@ -20,7 +20,7 @@ export class BookingsPublicController {
   constructor(private readonly bookingService: BookingsPublicService) {}
 
   @ApiOperation({
-    summary: "Проверка на правильность данных",
+    summary: "Получение данных о сотруднике",
   })
   @Get("booking/widgets/:public_name")
   @HttpCode(HttpStatus.OK)
@@ -38,6 +38,15 @@ export class BookingsPublicController {
   @HttpCode(HttpStatus.OK)
   getServices(@Param("user_id") userId: string) {
     return this.bookingService.services(userId);
+  }
+
+  @ApiOperation({
+    summary: "Получение информации о выбранной услуге",
+  })
+  @Get("booking/widgets/services/:service_id")
+  @HttpCode(HttpStatus.OK)
+  getService(@Param("service_id") serviceId: string) {
+    return this.bookingService.service(serviceId);
   }
 
   @ApiOperation({
