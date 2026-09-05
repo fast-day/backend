@@ -1,7 +1,6 @@
 import { ApiProperty } from "@nestjs/swagger";
 import {
   IsBoolean,
-  // IsEmail,
   IsNotEmpty,
   IsNumber,
   IsOptional,
@@ -12,16 +11,6 @@ import {
 import { RoleIds } from "src/role/types/role.type";
 
 export class EmployeeUpdateDto {
-  // @ApiProperty({
-  //   example: "example@gmail.com",
-  //   required: true,
-  //   description: "Email",
-  // })
-  // @IsString()
-  // @IsEmail()
-  // @IsNotEmpty({ message: "Обязательное поле" })
-  // email: string;
-
   @ApiProperty({
     example: "+7 999 999 99 99",
     required: true,
@@ -29,7 +18,7 @@ export class EmployeeUpdateDto {
   })
   @IsPhoneNumber("RU")
   @IsNotEmpty({ message: "Обязательное поле" })
-  phone: string;
+  phone!: string;
 
   @ApiProperty({
     example: "Вова",
@@ -38,7 +27,7 @@ export class EmployeeUpdateDto {
   })
   @IsString()
   @IsNotEmpty({ message: "Обязательное поле" })
-  first_name: string;
+  first_name!: string;
 
   @ApiProperty({
     example: "Пупкин",
@@ -47,7 +36,7 @@ export class EmployeeUpdateDto {
   })
   @IsString()
   @IsOptional()
-  last_name: string;
+  last_name!: string;
 
   @ApiProperty({
     example: 2,
@@ -55,7 +44,8 @@ export class EmployeeUpdateDto {
     description: "ID роли",
   })
   @IsNumber()
-  role: RoleIds;
+  @IsOptional()
+  role?: RoleIds;
 
   @ApiProperty({
     example: "Финансовый аналитик",
@@ -63,7 +53,8 @@ export class EmployeeUpdateDto {
     description: "Должность",
   })
   @IsString()
-  position: string;
+  @IsOptional()
+  position?: string;
 
   @ApiProperty({
     example: "06.09.2006",
@@ -100,7 +91,7 @@ export class EmployeeUpdateResponseDto {
   })
   @IsUUID()
   @IsString()
-  user_id: string;
+  user_id!: string;
 
   @ApiProperty({
     example: true,
@@ -108,5 +99,5 @@ export class EmployeeUpdateResponseDto {
   })
   @IsBoolean()
   @IsOptional()
-  success: boolean;
+  success!: boolean;
 }
