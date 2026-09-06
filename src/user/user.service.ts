@@ -16,6 +16,7 @@ import { buildFileUrl } from "src/shared/utils/build-url";
 import { ChangePasswordDto } from "./dto/change-password.dto";
 import { normalizePhone } from "src/shared/utils/phone";
 import { getFullName } from "src/shared/utils/get-full-name.util";
+import { APP_URL, WIDGET_URL } from "src/shared/constant/site.constant";
 
 @Injectable()
 export class UserService {
@@ -117,7 +118,8 @@ export class UserService {
           id: user.company?.id,
           name: user.company?.name,
           logo: buildFileUrl(user.company.logo),
-          site_url: `http://app.fast-day.ru/${user.company.publicName}`,
+          site_url: `${APP_URL}/${user.company.publicName}`,
+          widget_url: `${WIDGET_URL}/${user.company.publicName}`,
           currency: user.company?.currency,
         }
       : null;

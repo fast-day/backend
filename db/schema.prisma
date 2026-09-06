@@ -689,6 +689,8 @@ model LocationService {
 model Service {
   id            String        @id               @default(uuid())
 
+  publicCode    Int           @unique           @default(autoincrement())       @map("public_code")
+
   name          String
   publicName    String?       @map("public_name")
   mark          MarkEnum      // цвет
