@@ -51,9 +51,10 @@ export class BookingsPublicService {
     };
   }
 
-  private async employee(userId: string, locationId: string) {
+  // TEST
+  private async employee(userId: number, locationId: number) {
     const employee = await this.prismaService.userLocation.findUnique({
-      where: { userId_locationId: { userId, locationId } },
+      where: { userId_locationId: { userId: "", locationId: "" } },
       select: {
         id: true,
         userId: true,
@@ -103,9 +104,9 @@ export class BookingsPublicService {
     };
   }
 
-  private async location(companyId: string, locationId: string) {
+  private async location(companyId: string, publicCode: number) {
     const location = await this.prismaService.location.findFirst({
-      where: { companyId, id: locationId },
+      where: { companyId, publicCode },
       select: {
         id: true,
         name: true,
@@ -122,7 +123,7 @@ export class BookingsPublicService {
         {
           title: "Локация не найдеа",
           description: "Не удалось найти локацию",
-          detail: { location_id: locationId },
+          detail: { location_id: publicCode },
           status: HttpStatus.NOT_FOUND,
         },
         HttpStatus.NOT_FOUND,
@@ -159,6 +160,7 @@ export class BookingsPublicService {
         name: true,
         mark: true,
         duration: true,
+        publicCode: true,
         price: {
           select: {
             price: true,
@@ -182,7 +184,12 @@ export class BookingsPublicService {
     });
 
     return services.map((service) => ({
-      ...service,
+      uuid: service.id,
+      id: service.publicCode,
+      name: service.name,
+      mark: service.mark,
+      duration: service.duration,
+      category: service.category,
       avatar: buildFileUrl(service.avatar),
       price: {
         price: service.price?.price,
@@ -200,13 +207,15 @@ export class BookingsPublicService {
     }));
   }
 
-  async service(serviceId: string) {
+  async service(publicCode: number) {
     const service = await this.prismaService.service.findUnique({
-      where: { id: serviceId },
+      where: { publicCode },
       select: {
         id: true,
         name: true,
         duration: true,
+        publicCode: true,
+        mark: true,
         price: {
           select: {
             price: true,
@@ -234,14 +243,19 @@ export class BookingsPublicService {
         {
           title: "Услуга не найдеа",
           description: "Не удалось загрузить информацию",
-          detail: { service_id: serviceId },
+          detail: { service_id: publicCode },
           status: HttpStatus.NOT_FOUND,
         },
         HttpStatus.NOT_FOUND,
       );
 
     return {
-      ...service,
+      uuid: service.id,
+      id: service.publicCode,
+      name: service.name,
+      mark: service.mark,
+      duration: service.duration,
+      category: service.category,
       avatar: buildFileUrl(service.avatar),
       price: {
         price: service.price?.price,

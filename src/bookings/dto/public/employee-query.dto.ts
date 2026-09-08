@@ -4,9 +4,9 @@ import { IsString } from "class-validator";
 export class GetPublicBookingDto {
   @ApiProperty({ required: true })
   @IsString()
-  user_id!: string;
+  user_id!: number;
 
   @ApiProperty({ required: true })
   @IsString()
-  location_id!: string;
+  location_id!: number;
 }

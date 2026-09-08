@@ -226,6 +226,8 @@ model Permission {
 model User {
   id            String        @id               @default(uuid())
 
+  publicCode    Int           @unique           @default(autoincrement())       @map("public_code")
+
   email         String        @unique
   passwordHash  String?       @map("password_hash")
 
@@ -527,6 +529,8 @@ model OnboardingSurvey {
 model Location {
   id            String        @id               @default(uuid())
 
+  publicCode    Int           @unique           @default(autoincrement())       @map("public_code")
+
   name          String
   description   String?
   phone         String
@@ -603,6 +607,9 @@ model CustomerCompany {
 
   customer      Customer      @relation("customer_company_customer", fields: [customerId], references: [id], onDelete: Cascade)
   customerId    String        @map("customer_id")
+
+  firstName     String?       @map("first_name")
+  lastName      String?       @map("last_name")
 
   note          String?
   isBanned      Boolean?      @default(false)   @map("is_banned")

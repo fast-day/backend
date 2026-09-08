@@ -30,6 +30,7 @@ export class UserService {
       where: { id },
       select: {
         id: true,
+        publicCode: true,
         email: true,
         phone: true,
         lastName: true,
@@ -167,7 +168,8 @@ export class UserService {
       : null;
 
     return {
-      id: user.id,
+      uuid: user.id,
+      id: user.publicCode,
       email: user.email,
       phone: user.phone,
       role: user.role?.name,

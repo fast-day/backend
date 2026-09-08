@@ -67,7 +67,7 @@ export class CustomersController {
 
   /** === СПИСОК КЛИЕНТОВ === **/
   @ApiBearerAuth()
-  @ApiOperation({ summary: "Просмотр клиентов локации" })
+  @ApiOperation({ summary: "Просмотр клиентов компании" })
   @ApiResponse({
     status: HttpStatus.OK,
     description: "success",
@@ -82,9 +82,9 @@ export class CustomersController {
   @UseGuards(AuthGuard, LoadUserGuard, CompanyGuard, ScopeGuard)
   @Scopes("company-customers:read")
   @HttpCode(HttpStatus.OK)
-  getCustomerForLocation(@Query() query: GetCustomersDto, @Req() req) {
+  getCustomers(@Query() query: GetCustomersDto, @Req() req) {
     const companyId = req.user.companyId;
-    return this.customersService.getCustomerForLocation(companyId, query);
+    return this.customersService.getCustomers(companyId, query);
   }
 
   /** === ДЕТАЛЬНАЯ ИНФОРМАЦИЮ О КЛИЕНТЕ === **/
@@ -104,13 +104,13 @@ export class CustomersController {
   @UseGuards(AuthGuard, LoadUserGuard, LocationGuard, CompanyGuard, ScopeGuard)
   @Scopes("company-customer:read")
   @HttpCode(HttpStatus.OK)
-  getCustomerDetailForLocation(
+  getCustomerDetail(
     @Param("customer_id") customerId: string,
     @Authorized("id") userId: string,
     @Req() req,
   ) {
     const companyId = req.user.companyId;
-    return this.customersService.getCustomerDetailForLocation(
+    return this.customersService.getCustomerDetail(
       customerId,
       companyId,
       userId,
@@ -136,13 +136,13 @@ export class CustomersController {
   @UseGuards(AuthGuard, LoadUserGuard, LocationGuard, CompanyGuard, ScopeGuard)
   @Scopes("company-customer-bookings:read")
   @HttpCode(HttpStatus.OK)
-  getCustomerBookingsForLocation(
+  getCustomerBookings(
     @Param("customer_id") customerId: string,
     @Query() query: Omit<GetBookingsDto, "customer">,
     @Req() req,
   ) {
     const companyId = req.user.companyId;
-    return this.customersService.getCustomerBookingsForLocation(
+    return this.customersService.getCustomerBookings(
       customerId,
       companyId,
       query,
