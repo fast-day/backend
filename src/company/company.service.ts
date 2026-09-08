@@ -76,7 +76,7 @@ export class CompanyService {
           name: `Кабинет ${name}`,
           publicName,
           currency: dto.currency,
-          users: { connect: { id: user.id } },
+          users: { connect: { id: user.uuid } },
         },
         select: {
           id: true,
