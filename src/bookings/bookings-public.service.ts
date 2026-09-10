@@ -44,17 +44,34 @@ export class BookingsPublicService {
 
     return {
       id: company.id,
-      logo: company.logo,
+      logo: buildFileUrl(company.logo),
       name: company.name,
       public_name: company.publicName,
       currency: company.currency,
     };
   }
 
-  // TEST
-  private async employee(userId: number, locationId: number) {
+  private async employee(publicCode: number, locationId: string) {
+    const user = await this.prismaService.user.findUnique({
+      where: { publicCode: Number(publicCode) },
+      select: { id: true },
+    });
+
+    console.log(user, locationId);
+
+    if (!user)
+      throw new HttpException(
+        {
+          status: HttpStatus.NOT_FOUND,
+          title: "Сотрудник не найден",
+          detail: "Не удалось найти сотрудника",
+          meta: { user_public_code: publicCode },
+        },
+        HttpStatus.NOT_FOUND,
+      );
+
     const employee = await this.prismaService.userLocation.findUnique({
-      where: { userId_locationId: { userId: "", locationId: "" } },
+      where: { userId_locationId: { userId: user.id, locationId } },
       select: {
         id: true,
         userId: true,
@@ -84,7 +101,7 @@ export class BookingsPublicService {
         {
           title: "Сотрудник не найден",
           description: "Не удалось найти сотрудника",
-          detail: { employee_id: userId },
+          detail: { employee_id: user.id },
           status: HttpStatus.NOT_FOUND,
         },
         HttpStatus.NOT_FOUND,
@@ -106,7 +123,7 @@ export class BookingsPublicService {
 
   private async location(companyId: string, publicCode: number) {
     const location = await this.prismaService.location.findFirst({
-      where: { companyId, publicCode },
+      where: { companyId, publicCode: Number(publicCode) },
       select: {
         id: true,
         name: true,
@@ -141,7 +158,7 @@ export class BookingsPublicService {
 
     const company = await this.company(publicName);
     const location = await this.location(company.id, location_id);
-    const employee = await this.employee(user_id, location_id);
+    const employee = await this.employee(user_id, location.id);
 
     return {
       employee,

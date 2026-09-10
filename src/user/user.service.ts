@@ -42,6 +42,7 @@ export class UserService {
             location: {
               select: {
                 id: true,
+                publicCode: true,
                 name: true,
                 avatar: true,
                 address: {
@@ -126,7 +127,8 @@ export class UserService {
       : null;
 
     const locationArr = user.locations.map((loc) => ({
-      id: loc.location.id,
+      uuid: loc.location.id,
+      id: loc.location.publicCode,
       name: loc.location.name,
       avatar: buildFileUrl(loc.location.avatar),
       timezone: {
