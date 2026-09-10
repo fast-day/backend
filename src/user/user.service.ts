@@ -30,6 +30,7 @@ export class UserService {
       where: { id },
       select: {
         id: true,
+        publicCode: true,
         email: true,
         phone: true,
         lastName: true,
@@ -41,6 +42,7 @@ export class UserService {
             location: {
               select: {
                 id: true,
+                publicCode: true,
                 name: true,
                 avatar: true,
                 address: {
@@ -125,7 +127,8 @@ export class UserService {
       : null;
 
     const locationArr = user.locations.map((loc) => ({
-      id: loc.location.id,
+      uuid: loc.location.id,
+      id: loc.location.publicCode,
       name: loc.location.name,
       avatar: buildFileUrl(loc.location.avatar),
       timezone: {
@@ -167,7 +170,8 @@ export class UserService {
       : null;
 
     return {
-      id: user.id,
+      uuid: user.id,
+      id: user.publicCode,
       email: user.email,
       phone: user.phone,
       role: user.role?.name,

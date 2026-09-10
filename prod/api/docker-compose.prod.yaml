@@ -33,6 +33,8 @@ services:
       - MAIL_FROM=${MAIL_FROM}
       - MAIL_FROM_NAME=${MAIL_FROM_NAME}
       - FRONTEND_URL=${FRONTEND_URL}
+      - APP_URL=${APP_URL}
+      - WIDGET_URL=${WIDGET_URL}
     depends_on:
       - postgres
       - redis

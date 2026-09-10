@@ -43,9 +43,9 @@ export class BookingsPublicController {
   @ApiOperation({
     summary: "Получение информации о выбранной услуге",
   })
-  @Get("booking/widgets/services/:service_id")
+  @Get("booking/widgets/service/:service_id")
   @HttpCode(HttpStatus.OK)
-  getService(@Param("service_id") serviceId: string) {
+  getService(@Param("service_id") serviceId: number) {
     return this.bookingService.service(serviceId);
   }
 

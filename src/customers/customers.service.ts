@@ -22,6 +22,7 @@ import {
 import { getDayRange } from "src/bookings/utils/day-range.util";
 import { DEFAULT_TIMEZONE } from "src/shared/constant/timezone.constant";
 import { CustomerChecksService } from "./customer-checks.service";
+import { getCustomerDisplayName } from "src/shared/utils/get-customer-display-name.util";
 
 @Injectable()
 export class CustomersService {
@@ -67,6 +68,8 @@ export class CustomersService {
         id: true,
         isBanned: true,
         note: true,
+        firstName: true,
+        lastName: true,
         customer: {
           select: {
             firstName: true,
@@ -88,12 +91,15 @@ export class CustomersService {
       id: create.id,
       note: create.note,
       is_banned: create.isBanned,
-      full_name: getFullName(
-        create.customer.firstName,
-        create.customer.lastName,
+      full_name: getCustomerDisplayName(
+        { firstName: create.firstName, lastName: create.lastName },
+        {
+          firstName: create.customer.firstName,
+          lastName: create.customer.lastName,
+        },
       ),
-      first_name: create.customer.firstName,
-      last_name: create.customer.lastName,
+      first_name: create.firstName ?? create.customer.firstName,
+      last_name: create.lastName ?? create.customer.lastName,
       phone: create.customer.phone,
       avatar: buildFileUrl(create.customer.avatar),
       birthday: create.customer.birthday,
@@ -103,7 +109,7 @@ export class CustomersService {
   /**
     ===== ПОЛУЧИТЬ СПИСОК КЛИЕНТОВ КОМПАНИИ =====
   **/
-  async getCustomerForLocation(companyId: string, query: GetCustomersDto) {
+  async getCustomers(companyId: string, query: GetCustomersDto) {
     const { search, sort, ...pagination } = query;
     const { page, limit, skip } = getPaginationParams(pagination);
 
@@ -147,6 +153,8 @@ export class CustomersService {
         select: {
           id: true,
           isBanned: true,
+          firstName: true,
+          lastName: true,
           customer: {
             select: {
               firstName: true,
@@ -164,19 +172,29 @@ export class CustomersService {
       this.prismaService.customerCompany.count({ where }),
     ]);
 
-    const data = customers.map((customer) => ({
-      id: customer.id,
-      is_banned: customer.isBanned,
-      full_name: getFullName(
-        customer.customer.firstName,
-        customer.customer.lastName,
-      ),
-      first_name: customer.customer.firstName,
-      last_name: customer.customer.lastName,
-      phone: customer.customer.phone,
-      avatar: buildFileUrl(customer.customer.avatar),
-      birthday: customer.customer.birthday,
-    }));
+    const data = customers.map((customer) => {
+      const hasNameMismatch =
+        customer.firstName !== customer.customer.firstName ||
+        customer.lastName !== customer.lastName;
+
+      return {
+        id: customer.id,
+        is_banned: customer.isBanned,
+        has_name_mismatch: hasNameMismatch,
+        full_name: getCustomerDisplayName(
+          { firstName: customer.firstName, lastName: customer.lastName },
+          {
+            firstName: customer.customer.firstName,
+            lastName: customer.customer.lastName,
+          },
+        ),
+        first_name: customer.firstName ?? customer.customer.firstName,
+        last_name: customer.lastName ?? customer.customer.lastName,
+        phone: customer.customer.phone,
+        avatar: buildFileUrl(customer.customer.avatar),
+        birthday: customer.customer.birthday,
+      };
+    });
 
     return buildPaginatedResponse(data, total, page, limit);
   }
@@ -184,7 +202,7 @@ export class CustomersService {
   /**
     ===== ПОЛУЧИТЬ ДЕТАЛЬНУЮ ИНФОРМАЦИЮ О КЛИЕНТЕ =====
   **/
-  async getCustomerDetailForLocation(
+  async getCustomerDetail(
     customerId: string,
     companyId: string,
     userId: string,
@@ -195,6 +213,8 @@ export class CustomersService {
         id: true,
         note: true,
         isBanned: true,
+        firstName: true,
+        lastName: true,
         customer: {
           select: {
             id: true,
@@ -232,20 +252,28 @@ export class CustomersService {
         HttpStatus.NOT_FOUND,
       );
 
+    const hasNameMismatch =
+      customer.firstName !== customer.customer.firstName ||
+      customer.lastName !== customer.lastName;
+
     return {
       id: customer.id,
       note: customer.note,
       is_banned: customer.isBanned,
       booking_count: customer.customer._count.bookings,
       documents_count: customer._count.documents,
+      has_name_mismatch: hasNameMismatch,
       profile: {
         id: customer.customer.id,
-        full_name: getFullName(
-          customer.customer.firstName,
-          customer.customer.lastName,
+        full_name: getCustomerDisplayName(
+          { firstName: customer.firstName, lastName: customer.lastName },
+          {
+            firstName: customer.customer.firstName,
+            lastName: customer.customer.lastName,
+          },
         ),
-        first_name: customer.customer.firstName,
-        last_name: customer.customer.lastName,
+        first_name: customer.firstName ?? customer.customer.firstName,
+        last_name: customer.lastName ?? customer.customer.lastName,
         phone: customer.customer.phone,
         email: customer.customer.email,
         birthday: customer.customer.birthday,
@@ -254,7 +282,7 @@ export class CustomersService {
     };
   }
 
-  async getCustomerBookingsForLocation(
+  async getCustomerBookings(
     customerId: string,
     companyId: string,
     query: Omit<GetBookingsDto, "customer">,
@@ -436,6 +464,8 @@ export class CustomersService {
       where: { companyId, customer: { phoneNormalized } },
       select: {
         id: true,
+        firstName: true,
+        lastName: true,
         customer: {
           select: {
             id: true,
@@ -455,10 +485,16 @@ export class CustomersService {
       customer_id: customer?.id,
       profile: {
         id: customer?.customer.id ?? null,
-        first_name: customer?.customer.firstName ?? null,
-        last_name: customer?.customer.lastName ?? null,
-        full_name: customer?.customer
-          ? getFullName(customer.customer.firstName, customer.customer.lastName)
+        first_name: customer?.firstName ?? customer?.customer.firstName ?? null,
+        last_name: customer?.lastName ?? customer?.customer.lastName ?? null,
+        full_name: customer
+          ? getCustomerDisplayName(
+              { firstName: customer.firstName, lastName: customer.lastName },
+              {
+                firstName: customer.customer.firstName,
+                lastName: customer.customer.lastName,
+              },
+            )
           : null,
         avatar: buildFileUrl(customer?.customer.avatar ?? null),
         phone: customer?.customer.phone ?? null,
@@ -483,11 +519,15 @@ export class CustomersService {
         customerId,
         note: dto.note,
         isBanned: dto.is_banned,
+        firstName: dto.first_name,
+        lastName: dto.last_name,
       },
       select: {
         id: true,
         isBanned: true,
         note: true,
+        firstName: true,
+        lastName: true,
         customer: {
           select: {
             firstName: true,
@@ -509,12 +549,15 @@ export class CustomersService {
       id: create.id,
       note: create.note,
       is_banned: create.isBanned,
-      full_name: getFullName(
-        create.customer.firstName,
-        create.customer.lastName,
+      full_name: getCustomerDisplayName(
+        { firstName: create.firstName, lastName: create.lastName },
+        {
+          firstName: create.customer.firstName,
+          lastName: create.customer.lastName,
+        },
       ),
-      first_name: create.customer.firstName,
-      last_name: create.customer.lastName,
+      first_name: create.firstName ?? create.customer.firstName,
+      last_name: create.lastName ?? create.customer.lastName,
       phone: create.customer.phone,
       avatar: buildFileUrl(create.customer.avatar),
       birthday: create.customer.birthday,

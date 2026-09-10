@@ -44,16 +44,34 @@ export class BookingsPublicService {
 
     return {
       id: company.id,
-      logo: company.logo,
+      logo: buildFileUrl(company.logo),
       name: company.name,
       public_name: company.publicName,
       currency: company.currency,
     };
   }
 
-  private async employee(userId: string, locationId: string) {
+  private async employee(publicCode: number, locationId: string) {
+    const user = await this.prismaService.user.findUnique({
+      where: { publicCode: Number(publicCode) },
+      select: { id: true },
+    });
+
+    console.log(user, locationId);
+
+    if (!user)
+      throw new HttpException(
+        {
+          status: HttpStatus.NOT_FOUND,
+          title: "Сотрудник не найден",
+          detail: "Не удалось найти сотрудника",
+          meta: { user_public_code: publicCode },
+        },
+        HttpStatus.NOT_FOUND,
+      );
+
     const employee = await this.prismaService.userLocation.findUnique({
-      where: { userId_locationId: { userId, locationId } },
+      where: { userId_locationId: { userId: user.id, locationId } },
       select: {
         id: true,
         userId: true,
@@ -83,7 +101,7 @@ export class BookingsPublicService {
         {
           title: "Сотрудник не найден",
           description: "Не удалось найти сотрудника",
-          detail: { employee_id: userId },
+          detail: { employee_id: user.id },
           status: HttpStatus.NOT_FOUND,
         },
         HttpStatus.NOT_FOUND,
@@ -103,9 +121,9 @@ export class BookingsPublicService {
     };
   }
 
-  private async location(companyId: string, locationId: string) {
+  private async location(companyId: string, publicCode: number) {
     const location = await this.prismaService.location.findFirst({
-      where: { companyId, id: locationId },
+      where: { companyId, publicCode: Number(publicCode) },
       select: {
         id: true,
         name: true,
@@ -122,7 +140,7 @@ export class BookingsPublicService {
         {
           title: "Локация не найдеа",
           description: "Не удалось найти локацию",
-          detail: { location_id: locationId },
+          detail: { location_id: publicCode },
           status: HttpStatus.NOT_FOUND,
         },
         HttpStatus.NOT_FOUND,
@@ -140,7 +158,7 @@ export class BookingsPublicService {
 
     const company = await this.company(publicName);
     const location = await this.location(company.id, location_id);
-    const employee = await this.employee(user_id, location_id);
+    const employee = await this.employee(user_id, location.id);
 
     return {
       employee,
@@ -159,6 +177,7 @@ export class BookingsPublicService {
         name: true,
         mark: true,
         duration: true,
+        publicCode: true,
         price: {
           select: {
             price: true,
@@ -182,7 +201,12 @@ export class BookingsPublicService {
     });
 
     return services.map((service) => ({
-      ...service,
+      uuid: service.id,
+      id: service.publicCode,
+      name: service.name,
+      mark: service.mark,
+      duration: service.duration,
+      category: service.category,
       avatar: buildFileUrl(service.avatar),
       price: {
         price: service.price?.price,
@@ -200,13 +224,15 @@ export class BookingsPublicService {
     }));
   }
 
-  async service(serviceId: string) {
+  async service(publicCode: number) {
     const service = await this.prismaService.service.findUnique({
-      where: { id: serviceId },
+      where: { publicCode },
       select: {
         id: true,
         name: true,
         duration: true,
+        publicCode: true,
+        mark: true,
         price: {
           select: {
             price: true,
@@ -234,14 +260,19 @@ export class BookingsPublicService {
         {
           title: "Услуга не найдеа",
           description: "Не удалось загрузить информацию",
-          detail: { service_id: serviceId },
+          detail: { service_id: publicCode },
           status: HttpStatus.NOT_FOUND,
         },
         HttpStatus.NOT_FOUND,
       );
 
     return {
-      ...service,
+      uuid: service.id,
+      id: service.publicCode,
+      name: service.name,
+      mark: service.mark,
+      duration: service.duration,
+      category: service.category,
       avatar: buildFileUrl(service.avatar),
       price: {
         price: service.price?.price,
