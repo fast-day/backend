@@ -8,6 +8,11 @@ import { WidgetBookingCreateDto } from "./dto/public/booking-create.dto";
 import { BookingsService } from "./bookings.service";
 import { CustomerChecksService } from "src/customers/customer-checks.service";
 import { BookingCreateDto } from "./dto/booking-create.dto";
+import { GetSlotsDto } from "./dto/public/slot-query.dto";
+import { format, fromZonedTime } from "date-fns-tz";
+import { addDays } from "date-fns/addDays";
+import { formatIntervalTime } from "src/shared/utils/format-time.util";
+import { minutesToUtcDate } from "src/directories/utils/format-minutes.util";
 
 @Injectable()
 export class BookingsPublicService {
@@ -56,8 +61,6 @@ export class BookingsPublicService {
       where: { publicCode: Number(publicCode) },
       select: { id: true },
     });
-
-    console.log(user, locationId);
 
     if (!user)
       throw new HttpException(
@@ -169,9 +172,25 @@ export class BookingsPublicService {
     };
   }
 
-  async services(userId: string) {
+  async services(publicCode: number) {
+    const user = await this.prismaService.user.findUnique({
+      where: { publicCode: Number(publicCode) },
+      select: { id: true },
+    });
+
+    if (!user)
+      throw new HttpException(
+        {
+          status: HttpStatus.NOT_FOUND,
+          title: "Сотрудник не найден",
+          detail: "Не удалось найти сотрудника",
+          meta: { user_public_code: publicCode },
+        },
+        HttpStatus.NOT_FOUND,
+      );
+
     const services = await this.prismaService.service.findMany({
-      where: { users: { some: { userId } } },
+      where: { users: { some: { userId: user.id } } },
       select: {
         id: true,
         name: true,
@@ -287,6 +306,147 @@ export class BookingsPublicService {
         time_start: service.discount?.timeStart,
         time_end: service.discount?.timeEnd,
       },
+    };
+  }
+
+  async slots(user_id: number, query: GetSlotsDto) {
+    const { location_id, start_date, end_date, duration } = query;
+
+    const user = await this.prismaService.user.findUnique({
+      where: { publicCode: Number(user_id) },
+      select: { id: true },
+    });
+
+    if (!user)
+      throw new HttpException(
+        {
+          status: HttpStatus.NOT_FOUND,
+          title: "Сотрудник не найден",
+          detail: "Не удалось найти сотрудника",
+          meta: { user_public_code: user_id },
+        },
+        HttpStatus.NOT_FOUND,
+      );
+
+    const location = await this.prismaService.location.findFirst({
+      where: { publicCode: Number(location_id) },
+      select: { id: true, address: { select: { timezone: true } } },
+    });
+
+    if (!location)
+      throw new HttpException(
+        {
+          title: "Локация не найдеа",
+          description: "Не удалось найти локацию",
+          detail: { location_public_code: location_id },
+          status: HttpStatus.NOT_FOUND,
+        },
+        HttpStatus.NOT_FOUND,
+      );
+
+    const timezone = location.address?.timezone ?? DEFAULT_TIMEZONE;
+    const start = fromZonedTime(`${start_date}T00:00`, timezone);
+    const end = fromZonedTime(`${end_date}T00:00`, timezone);
+
+    const schedule = await this.prismaService.userLocation.findFirst({
+      where: { userId: user.id, locationId: location.id },
+      select: {
+        schedules: {
+          where: { date: { gte: start, lte: end } },
+          select: {
+            date: true,
+            intervals: { select: { start: true, end: true } },
+          },
+        },
+      },
+    });
+
+    const bookings = await this.prismaService.bookingService.findMany({
+      where: {
+        employeeId: user.id,
+        startTime: { gte: start, lt: end },
+        booking: { status: { not: "cancelled" } },
+      },
+      select: { startTime: true, endTime: true },
+    });
+
+    const days = schedule?.schedules.map((sch) =>
+      this.buildSlots(sch, bookings, Number(duration), timezone),
+    );
+
+    return { days };
+  }
+
+  private buildSlots(
+    schedule: { date: Date; intervals: { start: Date; end: Date }[] },
+    bookings: { startTime: Date; endTime: Date }[],
+    duration: number,
+    timezone: string,
+  ) {
+    const dayStart = schedule.date;
+    const dayEnd = addDays(dayStart, 1);
+
+    const dayBookings = bookings.filter(
+      (b) => b.startTime >= dayStart && b.startTime < dayEnd,
+    );
+
+    const timezoneMinutes = (time: Date) =>
+      time.getUTCHours() * 60 + time.getUTCMinutes();
+
+    const hasOverlap = (s: number, e: number) =>
+      dayBookings.some((b) => {
+        const start = timezoneMinutes(b.startTime);
+        const end = timezoneMinutes(b.endTime);
+        return s < end && e > start;
+      });
+
+    const slots: { start: string; end: string }[] = [];
+
+    for (const interval of schedule.intervals) {
+      const intStart = timezoneMinutes(interval.start);
+      const intEnd = timezoneMinutes(interval.end);
+
+      for (let c = intStart; c + duration <= intEnd; c += duration) {
+        const start = c;
+        const end = c + duration;
+
+        if (!hasOverlap(start, end)) {
+          slots.push({
+            start: formatIntervalTime(minutesToUtcDate(start), timezone),
+            end: formatIntervalTime(minutesToUtcDate(end), timezone),
+          });
+        }
+      }
+    }
+
+    const intervals = this.getDayIntervalRange(schedule.intervals, timezone);
+
+    return {
+      date: format(dayStart, "yyyy-MM-dd"),
+      slots,
+      intervals: intervals ? [intervals] : [],
+    };
+  }
+
+  private getDayIntervalRange(
+    intervals: { start: Date; end: Date }[],
+    timezone: string,
+  ): { start: string; end: string } | null {
+    if (intervals.length === 0) return null;
+
+    const earliestStart = intervals.reduce(
+      (min, i) => (i.start < min ? i.start : min),
+      intervals[0].start,
+    );
+
+    const latestEnd = intervals.reduce(
+      (max, i) => (i.end > max ? i.end : max),
+      intervals[0].end,
+    );
+
+    return {
+      start: formatIntervalTime(earliestStart, timezone),
+      end: formatIntervalTime(latestEnd, timezone),
     };
   }
 

@@ -13,6 +13,7 @@ import { BookingsPublicService } from "./bookings-public.service";
 import { GetPublicBookingDto } from "./dto/public/employee-query.dto";
 import { CreateBookingResponseDto } from "./dto/booking-response.dto";
 import { WidgetBookingCreateDto } from "./dto/public/booking-create.dto";
+import { GetSlotsDto } from "./dto/public/slot-query.dto";
 
 @ApiTags("Публичная запись")
 @Controller()
@@ -36,8 +37,17 @@ export class BookingsPublicController {
   })
   @Get("booking/widgets/services/:user_id")
   @HttpCode(HttpStatus.OK)
-  getServices(@Param("user_id") userId: string) {
-    return this.bookingService.services(userId);
+  getServices(@Param("user_id") publicCode: number) {
+    return this.bookingService.services(publicCode);
+  }
+
+  @ApiOperation({
+    summary: "Получение свободных слотов",
+  })
+  @Get("booking/widgets/slots/:user_id")
+  @HttpCode(HttpStatus.OK)
+  getSlots(@Param("user_id") publicCode: number, @Query() query: GetSlotsDto) {
+    return this.bookingService.slots(publicCode, query);
   }
 
   @ApiOperation({
