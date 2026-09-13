@@ -500,8 +500,15 @@ export class OrdersService {
         pdfParams: { tag: invoiceTag },
       });
 
+      const transactionSequence = await getNextSequence(
+        t,
+        companyId,
+        "transaction",
+      );
+
       await t.transaction.create({
         data: {
+          tag: transactionSequence.toString(),
           companyId,
           orderId,
           invoiceId,
@@ -594,8 +601,15 @@ export class OrdersService {
         pdfParams: { tag: invoiceTag },
       });
 
+      const transactionSequence = await getNextSequence(
+        t,
+        companyId,
+        "transaction",
+      );
+
       await t.transaction.create({
         data: {
+          tag: transactionSequence.toString(),
           companyId,
           orderId,
           invoiceId,
