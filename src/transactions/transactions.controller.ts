@@ -1,0 +1,132 @@
+import {
+  Controller,
+  Get,
+  Post,
+  Req,
+  UseGuards,
+  HttpCode,
+  HttpStatus,
+  Query,
+  Body,
+  Delete,
+  Param,
+} from "@nestjs/common";
+import {
+  ApiBearerAuth,
+  ApiBody,
+  ApiOperation,
+  ApiResponse,
+  ApiTags,
+} from "@nestjs/swagger/dist/decorators";
+import { TransactionsService } from "./transactions.service";
+import { AuthGuard } from "src/auth/guard/auth.guard";
+import { LoadUserGuard } from "src/user/guard/user.guard";
+import { CompanyGuard } from "src/access/guard/company.guard";
+import { ScopeGuard } from "src/access/guard/scope.guard";
+import { Scopes } from "src/access/decorator/scopes.decorator";
+import { GetTransactionsDto } from "./dto/get-transactions.dto";
+import { NotFoundDto, UnAuthorizedDto } from "src/shared/dto/errors.dto";
+import { CreateTransactionDto } from "./dto/create-transaction.dto";
+
+@ApiTags("Транзакции")
+@Controller("transactions")
+export class TransactionsController {
+  constructor(private readonly transactionsService: TransactionsService) {}
+
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: "Создание транзакции",
+    description: "Создание транзакции",
+  })
+  @ApiBody({ type: CreateTransactionDto })
+  @ApiResponse({
+    status: HttpStatus.CREATED,
+    description: "Транзакция успешно создана",
+    type: undefined,
+  })
+  @ApiResponse({
+    status: HttpStatus.UNAUTHORIZED,
+    description: "unauthorized",
+    type: UnAuthorizedDto,
+  })
+  @Post()
+  @UseGuards(AuthGuard, LoadUserGuard, CompanyGuard, ScopeGuard)
+  @Scopes("transactions:create")
+  @HttpCode(HttpStatus.CREATED)
+  create(@Req() req, @Body() dto: CreateTransactionDto) {
+    const companyId = req.user.companyId;
+    return this.transactionsService.create(companyId, dto);
+  }
+
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: "Получение списка транзакций",
+    description: "Получение списка транзакций",
+  })
+  @ApiResponse({
+    status: HttpStatus.UNAUTHORIZED,
+    description: "unauthorized",
+    type: UnAuthorizedDto,
+  })
+  @Get()
+  @UseGuards(AuthGuard, LoadUserGuard, CompanyGuard, ScopeGuard)
+  @Scopes("transactions:write")
+  @HttpCode(HttpStatus.OK)
+  getAll(@Req() req, @Query() query: GetTransactionsDto) {
+    const companyId = req.user.companyId;
+    return this.transactionsService.getAll(companyId, query);
+  }
+
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: "Получение детальной информации о транзакции",
+    description: "Получение детальной информации о транзакции",
+  })
+  @ApiResponse({
+    status: HttpStatus.NOT_FOUND,
+    description: "Транзакция не найдена",
+    type: NotFoundDto,
+  })
+  @ApiResponse({
+    status: HttpStatus.UNAUTHORIZED,
+    description: "unauthorized",
+    type: UnAuthorizedDto,
+  })
+  @Get(":transaction_id")
+  @UseGuards(AuthGuard, LoadUserGuard, CompanyGuard, ScopeGuard)
+  @Scopes("transactions:write")
+  @HttpCode(HttpStatus.OK)
+  detail(@Req() req, @Param("transaction_id") transactionId: string) {
+    const companyId = req.user.companyId;
+    return this.transactionsService.detail(companyId, transactionId);
+  }
+
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: "Удаление транзакции",
+    description: "Удаление транзакции",
+  })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: "Транзакция удалена",
+    type: undefined,
+  })
+  @ApiResponse({
+    status: HttpStatus.NOT_FOUND,
+    description: "Транзакция не найдена",
+    type: NotFoundDto,
+  })
+  @ApiResponse({
+    status: HttpStatus.UNAUTHORIZED,
+    description: "unauthorized",
+    type: UnAuthorizedDto,
+  })
+  @Delete(":transaction_id")
+  @UseGuards(AuthGuard, LoadUserGuard, CompanyGuard, ScopeGuard)
+  @Scopes("transactions:delete")
+  @HttpCode(HttpStatus.OK)
+  delete(@Req() req, @Param("transaction_id") transactionId: string) {
+    const companyId = req.user.companyId;
+    return this.transactionsService.delete(companyId, transactionId);
+  }
+}

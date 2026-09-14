@@ -31,6 +31,7 @@ import { SettingsModule } from "./settings/settings.module";
 import { OnboardingModule } from "./onboarding/onboarding.module";
 import { CustomerDocumentsModule } from "./customer_documents/customer_documents.module";
 import { InvoicesModule } from "./invoices/invoices.module";
+import { TransactionsModule } from "./transactions/transactions.module";
 
 @Module({
   imports: [
@@ -66,6 +67,7 @@ import { InvoicesModule } from "./invoices/invoices.module";
     OnboardingModule,
     CustomerDocumentsModule,
     InvoicesModule,
+    TransactionsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

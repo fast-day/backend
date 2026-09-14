@@ -76,6 +76,14 @@ const permissions = [
 
   "invoice:download",
   "invoices:read",
+
+  "transactions:write",
+  "transactions:create",
+  "transactions:delete",
+  "transactions-category:create",
+  "transactions-category:update",
+  "transactions-category:write",
+  "transactions-category:delete",
 ];
 
 const employeePermissions = [

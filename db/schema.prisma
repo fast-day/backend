@@ -151,6 +151,7 @@ enum INVOICE_STATUS {
 enum TRANSACTION_TYPE {
   earning
   refund_deduction
+  expense
 }
 
 enum CANCEL_REASON {
@@ -164,6 +165,13 @@ enum COUNTER_TYPE {
   order
   receipt
   invoice
+  transaction
+}
+
+enum TRANSACTION_CATEGORY_TYPE {
+  service
+  refund
+  custom
 }
 
 model Session {
@@ -487,6 +495,7 @@ model Company {
   orders        Order[]
 
   transactions  Transaction[] @relation("company_transactions")
+  transactionCategories       TransactionCategory[]             @relation("company_transaction_categories")
   invoices      Invoice[]     @relation("company_invoice")
   counters      CompanyCounter[]  @relation("company_counter")
 
@@ -932,22 +941,44 @@ model Invoice {
 model Transaction {
   id            String        @id               @default(uuid())
 
+  tag           String?
+
   type          TRANSACTION_TYPE                @default(earning)
   amount        Int
+  description   String?
 
   companyId     String        @map("company_id")
   company       Company       @relation("company_transactions" ,fields: [companyId], references: [id])
 
-  orderId       String        @map("order_id")
-  order         Order         @relation("order_transaction", fields: [orderId], references: [id])
+  orderId       String?       @map("order_id")
+  order         Order?        @relation("order_transaction", fields: [orderId], references: [id])
 
   invoiceId     String?       @unique           @map("invoice_id")
   invoice       Invoice?      @relation(fields: [invoiceId], references: [id])
+
+  categoryId    Int?          @map("category_id")
+  category      TransactionCategory?            @relation(fields: [categoryId], references: [id])
 
   createdAt     DateTime      @default(now())   @map("created_at")
 
   @@index([companyId, createdAt])
   @@map("transactions")
+}
+
+model TransactionCategory {
+  id            Int             @id @default(autoincrement())
+  name          String
+  mark          MarkEnum?       @default(orange)
+  type          TRANSACTION_CATEGORY_TYPE       @default(custom)
+
+  companyId     String          @map("company_id")
+  company       Company         @relation("company_transaction_categories", fields: [companyId], references: [id])
+  transactions  Transaction[]
+
+  createdAt     DateTime        @default(now()) @map("created_at")
+
+  @@unique([companyId, name])
+  @@map("transaction_categories")
 }
 
 /*
