@@ -1,4 +1,4 @@
-import { Injectable } from "@nestjs/common";
+import { HttpException, HttpStatus, Injectable } from "@nestjs/common";
 import { PrismaService } from "src/prisma/prisma.service";
 import { GetTransactionsDto } from "./dto/get-transactions.dto";
 import { Prisma } from "@prisma/client";
@@ -135,7 +135,49 @@ export class TransactionsService {
     return buildPaginatedResponse([data], total, page, limit);
   }
 
-  delete(id: string) {
-    return `This action removes a #${id} transaction`;
+  async delete(companyId: string, id: string) {
+    const isExist = await this.prismaService.transaction.findFirst({
+      where: { companyId, id },
+    });
+
+    if (!isExist)
+      throw new HttpException(
+        {
+          status: HttpStatus.NOT_FOUND,
+          title: "Транзакция не найдена",
+          detail: `Транзакцию, которую вы ищете, не найдена или была удалена`,
+          meta: { transaction_id: id },
+        },
+        HttpStatus.NOT_FOUND,
+      );
+
+    const transaction = await this.prismaService.transaction.delete({
+      where: { companyId, id },
+      select: {
+        id: true,
+        tag: true,
+        amount: true,
+        description: true,
+        type: true,
+        category: {
+          select: {
+            name: true,
+            mark: true,
+          },
+        },
+      },
+    });
+
+    return {
+      id: transaction.id,
+      tag: transaction.tag,
+      type: transaction.type,
+      amount: transaction.amount,
+      description: transaction.description,
+      category: {
+        name: transaction.category?.name,
+        mark: transaction.category?.mark,
+      },
+    };
   }
 }

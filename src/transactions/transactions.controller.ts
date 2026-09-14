@@ -8,6 +8,8 @@ import {
   HttpStatus,
   Query,
   Body,
+  Delete,
+  Param,
 } from "@nestjs/common";
 import {
   ApiBearerAuth,
@@ -73,5 +75,29 @@ export class TransactionsController {
   getAll(@Req() req, @Query() query: GetTransactionsDto) {
     const companyId = req.user.companyId;
     return this.transactionsService.getAll(companyId, query);
+  }
+
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: "Удаление категории",
+    description: "Удаление категории",
+  })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: "Категория удалена",
+    type: undefined,
+  })
+  @ApiResponse({
+    status: HttpStatus.UNAUTHORIZED,
+    description: "unauthorized",
+    type: UnAuthorizedDto,
+  })
+  @Delete(":transaction_id")
+  @UseGuards(AuthGuard, LoadUserGuard, CompanyGuard, ScopeGuard)
+  @Scopes("transactions:delete")
+  @HttpCode(HttpStatus.OK)
+  delete(@Req() req, @Param("transaction_id") transactionId: string) {
+    const companyId = req.user.companyId;
+    return this.transactionsService.delete(companyId, transactionId);
   }
 }
