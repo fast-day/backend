@@ -25,7 +25,7 @@ import { CompanyGuard } from "src/access/guard/company.guard";
 import { ScopeGuard } from "src/access/guard/scope.guard";
 import { Scopes } from "src/access/decorator/scopes.decorator";
 import { GetTransactionsDto } from "./dto/get-transactions.dto";
-import { UnAuthorizedDto } from "src/shared/dto/errors.dto";
+import { NotFoundDto, UnAuthorizedDto } from "src/shared/dto/errors.dto";
 import { CreateTransactionDto } from "./dto/create-transaction.dto";
 
 @ApiTags("Транзакции")
@@ -79,8 +79,13 @@ export class TransactionsController {
 
   @ApiBearerAuth()
   @ApiOperation({
-    summary: "Получение списка транзакций",
-    description: "Получение списка транзакций",
+    summary: "Получение детальной информации о транзакции",
+    description: "Получение детальной информации о транзакции",
+  })
+  @ApiResponse({
+    status: HttpStatus.NOT_FOUND,
+    description: "Транзакция не найдена",
+    type: NotFoundDto,
   })
   @ApiResponse({
     status: HttpStatus.UNAUTHORIZED,
@@ -98,13 +103,18 @@ export class TransactionsController {
 
   @ApiBearerAuth()
   @ApiOperation({
-    summary: "Удаление категории",
-    description: "Удаление категории",
+    summary: "Удаление транзакции",
+    description: "Удаление транзакции",
   })
   @ApiResponse({
     status: HttpStatus.OK,
-    description: "Категория удалена",
+    description: "Транзакция удалена",
     type: undefined,
+  })
+  @ApiResponse({
+    status: HttpStatus.NOT_FOUND,
+    description: "Транзакция не найдена",
+    type: NotFoundDto,
   })
   @ApiResponse({
     status: HttpStatus.UNAUTHORIZED,

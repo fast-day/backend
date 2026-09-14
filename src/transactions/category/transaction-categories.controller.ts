@@ -24,7 +24,7 @@ import { LoadUserGuard } from "src/user/guard/user.guard";
 import { CompanyGuard } from "src/access/guard/company.guard";
 import { ScopeGuard } from "src/access/guard/scope.guard";
 import { Scopes } from "src/access/decorator/scopes.decorator";
-import { UnAuthorizedDto } from "src/shared/dto/errors.dto";
+import { NotFoundDto, UnAuthorizedDto } from "src/shared/dto/errors.dto";
 import { TransactionCategoriesService } from "./transaction-categories.service";
 import {
   TransactionCategoryDto,
@@ -71,9 +71,14 @@ export class TransactionCategoriesController {
   })
   @ApiBody({ type: UpdateTransactionCategoryDto })
   @ApiResponse({
-    status: HttpStatus.CREATED,
+    status: HttpStatus.OK,
     description: "Категория обновлена",
     type: undefined,
+  })
+  @ApiResponse({
+    status: HttpStatus.NOT_FOUND,
+    description: "Категория не найдена",
+    type: NotFoundDto,
   })
   @ApiResponse({
     status: HttpStatus.UNAUTHORIZED,
@@ -125,6 +130,11 @@ export class TransactionCategoriesController {
     status: HttpStatus.OK,
     description: "Категория удалена",
     type: undefined,
+  })
+  @ApiResponse({
+    status: HttpStatus.NOT_FOUND,
+    description: "Категория не найдена",
+    type: NotFoundDto,
   })
   @ApiResponse({
     status: HttpStatus.UNAUTHORIZED,
