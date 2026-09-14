@@ -19,6 +19,36 @@ import { fromZonedTime } from "date-fns-tz";
 export class TransactionsService {
   public constructor(private readonly prismaService: PrismaService) {}
 
+  private async findById(companyId: string, id: string) {
+    const transaction = await this.prismaService.transaction.findFirst({
+      where: { companyId, id },
+    });
+
+    if (!transaction)
+      throw new HttpException(
+        {
+          status: HttpStatus.NOT_FOUND,
+          title: "Транзакция не найдена",
+          detail: `Транзакцию, которую вы ищете, не найдена или была удалена`,
+          meta: { transaction_id: id },
+        },
+        HttpStatus.NOT_FOUND,
+      );
+
+    return transaction;
+  }
+
+  private async getTimezone(companyId: string) {
+    const company = await this.prismaService.company.findUnique({
+      where: { id: companyId },
+      select: {
+        locations: { select: { address: { select: { timezone: true } } } },
+      },
+    });
+
+    return company?.locations[0]?.address?.timezone ?? DEFAULT_TIMEZONE;
+  }
+
   async create(companyId: string, dto: CreateTransactionDto) {
     const transaction = await this.prismaService.$transaction(async (t) => {
       const sequence = await getNextSequence(t, companyId, "transaction");
@@ -65,15 +95,7 @@ export class TransactionsService {
     const { start_date, end_date, type, category_id, ...pagination } = query;
     const { page, limit, skip } = getPaginationParams(pagination);
 
-    const company = await this.prismaService.company.findUnique({
-      where: { id: companyId },
-      select: {
-        locations: { select: { address: { select: { timezone: true } } } },
-      },
-    });
-
-    const timezone =
-      company?.locations[0]?.address?.timezone ?? DEFAULT_TIMEZONE;
+    const timezone = await this.getTimezone(companyId);
 
     const rangeStart = fromZonedTime(`${start_date}T00:00`, timezone);
     const rangeEnd = fromZonedTime(`${end_date}T23:59:59.999`, timezone);
@@ -135,12 +157,52 @@ export class TransactionsService {
     return buildPaginatedResponse([data], total, page, limit);
   }
 
-  async delete(companyId: string, id: string) {
-    const isExist = await this.prismaService.transaction.findFirst({
+  async detail(companyId: string, id: string) {
+    const transaction = await this.prismaService.transaction.findFirst({
       where: { companyId, id },
+      select: {
+        id: true,
+        tag: true,
+        amount: true,
+        description: true,
+        type: true,
+        category: {
+          select: {
+            name: true,
+            mark: true,
+          },
+        },
+        invoice: {
+          select: {
+            id: true,
+            tag: true,
+            type: true,
+            status: true,
+            amount: true,
+            createdAt: true,
+          },
+        },
+        order: {
+          select: {
+            id: true,
+            status: true,
+            subtotal: true,
+            total: true,
+            tag: true,
+            publicCode: true,
+            comment: true,
+            paidAt: true,
+            discount: true,
+            paymentMethod: true,
+            isDeposit: true,
+            createdAt: true,
+          },
+        },
+        createdAt: true,
+      },
     });
 
-    if (!isExist)
+    if (!transaction)
       throw new HttpException(
         {
           status: HttpStatus.NOT_FOUND,
@@ -150,6 +212,48 @@ export class TransactionsService {
         },
         HttpStatus.NOT_FOUND,
       );
+
+    const timezone = await this.getTimezone(companyId);
+
+    return {
+      id: transaction.id,
+      tag: transaction.tag,
+      amount: transaction.amount,
+      description: transaction.description,
+      type: transaction.type,
+      category: {
+        name: transaction.category?.name,
+        mark: transaction.category?.mark,
+      },
+      invoice: transaction.invoice
+        ? {
+            id: transaction.invoice.id,
+            tag: transaction.invoice.tag,
+            type: transaction.invoice.type,
+            status: transaction.invoice.status,
+            amount: transaction.invoice.amount,
+            date: formatDateInTimezone(transaction.invoice.createdAt, timezone),
+          }
+        : null,
+      order: transaction.order
+        ? {
+            id: transaction.order.id,
+            status: transaction.order.status,
+            tag: transaction.order.tag,
+            subtotal: transaction.order.subtotal,
+            total: transaction.order.total,
+            date: formatDateInTimezone(transaction.order.createdAt, timezone),
+            time: formatBookingTime(transaction.order.createdAt, timezone),
+            payment_method: transaction.order.paymentMethod,
+            is_payment: !!transaction.order.paidAt,
+            discount: transaction.order.discount,
+          }
+        : null,
+    };
+  }
+
+  async delete(companyId: string, id: string) {
+    await this.findById(companyId, id);
 
     const transaction = await this.prismaService.transaction.delete({
       where: { companyId, id },

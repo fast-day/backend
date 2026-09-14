@@ -79,6 +79,25 @@ export class TransactionsController {
 
   @ApiBearerAuth()
   @ApiOperation({
+    summary: "Получение списка транзакций",
+    description: "Получение списка транзакций",
+  })
+  @ApiResponse({
+    status: HttpStatus.UNAUTHORIZED,
+    description: "unauthorized",
+    type: UnAuthorizedDto,
+  })
+  @Get(":transaction_id")
+  @UseGuards(AuthGuard, LoadUserGuard, CompanyGuard, ScopeGuard)
+  @Scopes("transactions:write")
+  @HttpCode(HttpStatus.OK)
+  detail(@Req() req, @Param("transaction_id") transactionId: string) {
+    const companyId = req.user.companyId;
+    return this.transactionsService.detail(companyId, transactionId);
+  }
+
+  @ApiBearerAuth()
+  @ApiOperation({
     summary: "Удаление категории",
     description: "Удаление категории",
   })
