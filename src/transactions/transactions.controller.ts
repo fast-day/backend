@@ -2,8 +2,6 @@ import {
   Controller,
   Get,
   Post,
-  Param,
-  Delete,
   Req,
   UseGuards,
   HttpCode,
@@ -16,6 +14,7 @@ import {
   ApiBody,
   ApiOperation,
   ApiResponse,
+  ApiTags,
 } from "@nestjs/swagger/dist/decorators";
 import { TransactionsService } from "./transactions.service";
 import { AuthGuard } from "src/auth/guard/auth.guard";
@@ -27,6 +26,7 @@ import { GetTransactionsDto } from "./dto/get-transactions.dto";
 import { UnAuthorizedDto } from "src/shared/dto/errors.dto";
 import { CreateTransactionDto } from "./dto/create-transaction.dto";
 
+@ApiTags("Транзакции")
 @Controller("transactions")
 export class TransactionsController {
   constructor(private readonly transactionsService: TransactionsService) {}
@@ -73,10 +73,5 @@ export class TransactionsController {
   getAll(@Req() req, @Query() query: GetTransactionsDto) {
     const companyId = req.user.companyId;
     return this.transactionsService.getAll(companyId, query);
-  }
-
-  @Delete(":transaction_id")
-  delete(@Param("transaction_id") transactionId: string) {
-    return this.transactionsService.delete(transactionId);
   }
 }

@@ -168,6 +168,12 @@ enum COUNTER_TYPE {
   transaction
 }
 
+enum TRANSACTION_CATEGORY_TYPE {
+  service
+  refund
+  custom
+}
+
 model Session {
   id            String        @id               @default(uuid())
 
@@ -962,8 +968,10 @@ model Transaction {
 model TransactionCategory {
   id            Int             @id @default(autoincrement())
   name          String
-  companyId     String          @map("company_id")
+  mark          MarkEnum?       @default(orange)
+  type          TRANSACTION_CATEGORY_TYPE       @default(custom)
 
+  companyId     String          @map("company_id")
   company       Company         @relation("company_transaction_categories", fields: [companyId], references: [id])
   transactions  Transaction[]
 

@@ -8,6 +8,12 @@ import {
 } from "src/shared/common/pagination/pagination";
 import { CreateTransactionDto } from "./dto/create-transaction.dto";
 import { getNextSequence } from "src/shared/utils/get-next-sequence.util";
+import {
+  formatBookingTime,
+  formatDateInTimezone,
+} from "src/bookings/utils/format-time.util";
+import { DEFAULT_TIMEZONE } from "src/shared/constant/timezone.constant";
+import { fromZonedTime } from "date-fns-tz";
 
 @Injectable()
 export class TransactionsService {
@@ -34,6 +40,7 @@ export class TransactionsService {
           category: {
             select: {
               name: true,
+              mark: true,
             },
           },
           createdAt: true,
@@ -46,23 +53,36 @@ export class TransactionsService {
       tag: transaction.tag,
       amount: transaction.amount,
       description: transaction.description,
-      category: transaction.category?.name,
+      category: {
+        name: transaction.category?.name,
+        mark: transaction.category?.mark,
+      },
       date: transaction.createdAt,
     };
   }
 
-  /*
-    !===== ПОПРАВИТЬ БАГ С СОРТИРОВКОЙ ПО ДАТАМ =====!
-  */
   async getAll(companyId: string, query: GetTransactionsDto) {
     const { start_date, end_date, type, category_id, ...pagination } = query;
     const { page, limit, skip } = getPaginationParams(pagination);
+
+    const company = await this.prismaService.company.findUnique({
+      where: { id: companyId },
+      select: {
+        locations: { select: { address: { select: { timezone: true } } } },
+      },
+    });
+
+    const timezone =
+      company?.locations[0]?.address?.timezone ?? DEFAULT_TIMEZONE;
+
+    const rangeStart = fromZonedTime(`${start_date}T00:00`, timezone);
+    const rangeEnd = fromZonedTime(`${end_date}T23:59:59.999`, timezone);
 
     const where: Prisma.TransactionWhereInput = {
       ...(type && { type }),
       ...(category_id && { categoryId: Number(category_id) }),
       companyId,
-      createdAt: { gte: new Date(start_date), lte: new Date(end_date) },
+      createdAt: { gte: rangeStart, lte: rangeEnd },
     };
 
     const [transactions, sum, total] = await Promise.all([
@@ -73,9 +93,11 @@ export class TransactionsService {
           tag: true,
           amount: true,
           description: true,
+          type: true,
           category: {
             select: {
               name: true,
+              mark: true,
             },
           },
           createdAt: true,
@@ -98,10 +120,15 @@ export class TransactionsService {
       transactions: transactions.map((transaction) => ({
         id: transaction.id,
         tag: transaction.tag,
+        type: transaction.type,
         amount: transaction.amount,
         description: transaction.description,
-        category: transaction.category?.name,
-        date: transaction.createdAt,
+        category: {
+          name: transaction.category?.name,
+          mark: transaction.category?.mark,
+        },
+        date: formatDateInTimezone(transaction.createdAt, timezone),
+        time: formatBookingTime(transaction.createdAt, timezone),
       })),
     };
 

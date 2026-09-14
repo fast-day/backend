@@ -129,6 +129,23 @@ export class CompanyService {
         company.id,
       );
 
+      await t.transactionCategory.createMany({
+        data: [
+          {
+            name: "Услуги",
+            companyId: company.id,
+            mark: "green",
+            type: "service",
+          },
+          {
+            name: "Возврат",
+            companyId: company.id,
+            mark: "red",
+            type: "refund",
+          },
+        ],
+      });
+
       return { ...company, location };
     });
 
