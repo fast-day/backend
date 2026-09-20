@@ -70,6 +70,8 @@ export class TransactionsService {
           category: {
             select: {
               name: true,
+              type: true,
+              icon: true,
               mark: true,
             },
           },
@@ -85,6 +87,8 @@ export class TransactionsService {
       description: transaction.description,
       category: {
         name: transaction.category?.name,
+        type: transaction.category?.type,
+        icon: transaction.category?.icon,
         mark: transaction.category?.mark,
       },
       date: transaction.createdAt,
@@ -114,11 +118,12 @@ export class TransactionsService {
           id: true,
           tag: true,
           amount: true,
-          description: true,
           type: true,
           category: {
             select: {
               name: true,
+              type: true,
+              icon: true,
               mark: true,
             },
           },
@@ -144,9 +149,10 @@ export class TransactionsService {
         tag: transaction.tag,
         type: transaction.type,
         amount: transaction.amount,
-        description: transaction.description,
         category: {
           name: transaction.category?.name,
+          type: transaction.category?.type,
+          icon: transaction.category?.icon,
           mark: transaction.category?.mark,
         },
         date: formatDateInTimezone(transaction.createdAt, timezone),
@@ -169,6 +175,8 @@ export class TransactionsService {
         category: {
           select: {
             name: true,
+            type: true,
+            icon: true,
             mark: true,
           },
         },
@@ -223,6 +231,8 @@ export class TransactionsService {
       type: transaction.type,
       category: {
         name: transaction.category?.name,
+        type: transaction.category?.type,
+        icon: transaction.category?.icon,
         mark: transaction.category?.mark,
       },
       invoice: transaction.invoice
@@ -266,6 +276,8 @@ export class TransactionsService {
         category: {
           select: {
             name: true,
+            type: true,
+            icon: true,
             mark: true,
           },
         },
@@ -280,6 +292,8 @@ export class TransactionsService {
       description: transaction.description,
       category: {
         name: transaction.category?.name,
+        type: transaction.category?.type,
+        icon: transaction.category?.icon,
         mark: transaction.category?.mark,
       },
     };
