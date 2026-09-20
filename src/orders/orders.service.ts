@@ -507,7 +507,7 @@ export class OrdersService {
       );
 
       const transactionCategory = await t.transactionCategory.findFirst({
-        where: { companyId, type: "service" },
+        where: { name: "Доход от услуги" },
         select: { id: true },
       });
 
@@ -614,7 +614,7 @@ export class OrdersService {
       );
 
       const transactionCategory = await t.transactionCategory.findFirst({
-        where: { companyId, type: "refund" },
+        where: { name: "Возврат" },
         select: { id: true },
       });
 

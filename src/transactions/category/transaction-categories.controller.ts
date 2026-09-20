@@ -33,7 +33,7 @@ import {
 import { GetTransactionCategoryQueryDto } from "./dto/get-category-query.dto";
 
 @ApiTags("Категории для транзакций")
-@Controller("transactions/category")
+@Controller("transaction/category")
 export class TransactionCategoriesController {
   constructor(
     private readonly transactionCategoriesService: TransactionCategoriesService,

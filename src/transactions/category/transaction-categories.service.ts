@@ -19,6 +19,7 @@ export class TransactionCategoriesService {
         name: true,
         mark: true,
         type: true,
+        icon: true,
       },
     });
 
@@ -63,12 +64,13 @@ export class TransactionCategoriesService {
       );
 
     const category = await this.prismaService.transactionCategory.create({
-      data: { companyId, name: dto.name, mark: dto.mark },
+      data: { companyId, name: dto.name, mark: dto.mark, icon: dto.icon },
       select: {
         id: true,
         name: true,
         mark: true,
         type: true,
+        icon: true,
       },
     });
 
@@ -77,7 +79,7 @@ export class TransactionCategoriesService {
 
   async getAll(companyId: string, query: GetTransactionCategoryQueryDto) {
     const where: Prisma.TransactionCategoryWhereInput = {
-      companyId,
+      OR: [{ companyId: null }, { companyId }],
       ...(query.search && {
         name: { contains: query.search, mode: Prisma.QueryMode.insensitive },
       }),
@@ -91,6 +93,7 @@ export class TransactionCategoriesService {
         name: true,
         mark: true,
         type: true,
+        icon: true,
       },
       orderBy: { createdAt: "desc" },
     });
@@ -106,7 +109,7 @@ export class TransactionCategoriesService {
     await this.findById(companyId, categoryId);
 
     const isExist = await this.prismaService.transactionCategory.findFirst({
-      where: { companyId, name: dto.name },
+      where: { companyId, name: dto.name, icon: dto.icon },
     });
 
     if (isExist)
@@ -128,6 +131,7 @@ export class TransactionCategoriesService {
         name: true,
         mark: true,
         type: true,
+        icon: true,
       },
     });
   }
@@ -142,6 +146,7 @@ export class TransactionCategoriesService {
         name: true,
         mark: true,
         type: true,
+        icon: true,
       },
     });
   }

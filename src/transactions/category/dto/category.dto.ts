@@ -1,5 +1,5 @@
 import { ApiProperty, PartialType } from "@nestjs/swagger";
-import { MarkEnum } from "@prisma/client";
+import { MarkEnum, TRANSACTION_CATEGORY_ICON } from "@prisma/client";
 import { IsEnum, IsOptional, IsString } from "class-validator";
 
 export class TransactionCategoryDto {
@@ -18,6 +18,14 @@ export class TransactionCategoryDto {
   @IsEnum(MarkEnum)
   @IsOptional()
   mark?: MarkEnum;
+
+  @ApiProperty({
+    example:
+      "coin | gift | handbag | ayers | pie | wallet | repeat | recipe | reply | cart | shop | stars | tools | card | undo | increase",
+    description: "Иконка категории",
+  })
+  @IsEnum(TRANSACTION_CATEGORY_ICON)
+  icon!: TRANSACTION_CATEGORY_ICON;
 }
 
 export class UpdateTransactionCategoryDto extends PartialType(
