@@ -50,4 +50,21 @@ export class GetBookingsDto extends GetQueryDto {
   @IsEnum(BookingSortOrder)
   sort?: BookingSortOrder;
 }
+
+export class GetCalendarBookingsDto extends GetQueryDto {
+  @ApiProperty({ required: true })
+  @IsString()
+  location!: string;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsDateString()
+  start_date?: string;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsDateString()
+  end_date?: string;
+}
+
 export { BookingSortOrder };

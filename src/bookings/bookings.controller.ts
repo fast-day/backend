@@ -40,7 +40,7 @@ import {
   SuccessResponseDto,
 } from "./dto/booking-response.dto";
 import { UnAuthorizedDto } from "src/shared/dto/errors.dto";
-import { GetBookingsDto } from "./dto/get-bookings.dto";
+import { GetBookingsDto, GetCalendarBookingsDto } from "./dto/get-bookings.dto";
 import { BookingCustomerResponseDto } from "./dto/booking-customer-response.dto";
 import { GetCustomerBookingsDto } from "./dto/get-customer-bookings.dto";
 
@@ -113,6 +113,45 @@ export class BookingsController {
   ) {
     const userId = req.user.id;
     return this.bookingsService.getAll(userId, locationId, query);
+  }
+
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: "Получение всех бронирований в локации (КАЛЕНДАРЬ)",
+    description:
+      "Возвращает список всех бронирований для указанной локации (КАЛЕНДАРЬ)",
+  })
+  @ApiParam({
+    name: "location_id",
+    example: "a8f4ff39-f908-472e-bf19-259b557c952a",
+    description: "ID локации",
+  })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: "Список бронирований",
+    type: undefined,
+    isArray: true,
+  })
+  @ApiResponse({
+    status: HttpStatus.UNAUTHORIZED,
+    description: "unauthorized",
+    type: UnAuthorizedDto,
+  })
+  @ApiResponse({
+    status: HttpStatus.NOT_FOUND,
+    description: "not found",
+  })
+  @Get("bookings/calendar")
+  @UseGuards(AuthGuard, LoadUserGuard, CompanyGuard, LocationGuard, ScopeGuard)
+  @Scopes("bookings:read")
+  @HttpCode(HttpStatus.OK)
+  getCalendarBooking(
+    // @Param("location_id") locationId: string,
+    @Query() query: GetCalendarBookingsDto,
+    @Req() req,
+  ) {
+    const userId = req.user.id;
+    return this.bookingsService.getCalendarBooking(userId, query);
   }
 
   @ApiBearerAuth()
