@@ -358,6 +358,7 @@ export class BookingsService {
           tag: true,
           status: true,
           comment: true,
+          mark: true,
           customer: {
             select: {
               id: true,
@@ -440,6 +441,7 @@ export class BookingsService {
           date: formatDateInTimezone(start, timezone),
           start_time: formatBookingTime(start, timezone),
           end_time: formatBookingTime(end, timezone),
+          mark: booking.mark,
           subtotal: booking.order?.subtotal || null,
           payment_method: booking.order?.paymentMethod || null,
           order_id: booking.order?.id || null,
