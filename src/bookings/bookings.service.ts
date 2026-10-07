@@ -9,7 +9,11 @@ import {
   buildPaginatedResponse,
   getPaginationParams,
 } from "src/shared/common/pagination/pagination";
-import { BookingSortOrder, GetBookingsDto } from "./dto/get-bookings.dto";
+import {
+  BookingSortOrder,
+  GetBookingsDto,
+  GetCalendarBookingsDto,
+} from "./dto/get-bookings.dto";
 import { normalizePhone } from "src/shared/utils/phone";
 import { getFullName } from "src/shared/utils/get-full-name.util";
 import { calcEndTimeDate } from "src/shared/utils/calc-end-time.util";
@@ -25,6 +29,7 @@ import { fromZonedTime } from "date-fns-tz";
 import { GetCustomerBookingsDto } from "./dto/get-customer-bookings.dto";
 import { UpdateBookingServicesDto } from "./dto/booking-update-service.dto";
 import { BookingValidationService } from "./validation/booking-validation.service";
+import { formatIntervalTime } from "src/shared/utils/format-time.util";
 
 @Injectable()
 export class BookingsService {
@@ -323,6 +328,177 @@ export class BookingsService {
       ----- !!!! ПОДПРАВИТЬ ВЫВОД !!!! -----
     */
     return services;
+  }
+
+  async getCalendarBooking(userId: string, query: GetCalendarBookingsDto) {
+    const { location: locationId, start_date, end_date } = query;
+
+    const { isOwner, timezone } = await this.validationService.getUserLocation(
+      userId,
+      locationId,
+    );
+
+    const rangeStart = fromZonedTime(`${start_date}T00:00`, timezone);
+    const rangeEnd = fromZonedTime(`${end_date}T23:59:59.999`, timezone);
+    const rangeStartDate = new Date(`${start_date}T00:00:00.000Z`);
+    const rangeEndDate = new Date(`${end_date}T00:00:00.000Z`);
+
+    const where: Prisma.BookingWhereInput = {
+      ...(isOwner ? {} : { employeeId: userId }),
+      services: {
+        some: {
+          startTime: { gte: rangeStart, lte: rangeEnd },
+        },
+      },
+    };
+
+    const [bookings, schedule] = await Promise.all([
+      this.prismaService.booking.findMany({
+        where,
+        select: {
+          id: true,
+          tag: true,
+          status: true,
+          comment: true,
+          mark: true,
+          customer: {
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+              phone: true,
+              avatar: true,
+            },
+          },
+          services: {
+            where: isOwner ? {} : { employeeId: userId },
+            select: {
+              id: true,
+              unitPrice: true,
+              startTime: true,
+              endTime: true,
+              duration: true,
+              count: true,
+              service: {
+                select: {
+                  id: true,
+                  name: true,
+                  avatar: true,
+                  mark: true,
+                  category: true,
+                  price: { select: { price: true, costPrice: true } },
+                  duration: true,
+                },
+              },
+              employee: {
+                select: {
+                  id: true,
+                  phone: true,
+                  firstName: true,
+                  lastName: true,
+                  avatar: true,
+                },
+              },
+            },
+          },
+          order: {
+            select: {
+              id: true,
+              subtotal: true,
+              paymentMethod: true,
+            },
+          },
+        },
+      }),
+      this.prismaService.schedule.findMany({
+        where: {
+          userLocation: { userId, locationId },
+          date: { gte: rangeStartDate, lte: rangeEndDate },
+        },
+        select: {
+          id: true,
+          date: true,
+          intervals: { select: { start: true, end: true } },
+        },
+        orderBy: { date: "asc" },
+      }),
+    ]);
+
+    return {
+      intervals: schedule.map((schedule) => ({
+        id: schedule.id,
+        date: schedule.date.toISOString().split("T")[0],
+        intervals: schedule.intervals.map((interval) => ({
+          start: formatIntervalTime(interval.start, timezone),
+          end: formatIntervalTime(interval.end, timezone),
+        })),
+      })),
+      bookings: bookings.map((booking) => {
+        const { start, end } = getBookingTimeRange(booking.services);
+        return {
+          id: booking.id,
+          status: booking.status,
+          tag: booking.tag,
+          comment: booking.comment,
+          date: formatDateInTimezone(start, timezone),
+          start_time: formatBookingTime(start, timezone),
+          end_time: formatBookingTime(end, timezone),
+          mark: booking.mark,
+          subtotal: booking.order?.subtotal || null,
+          payment_method: booking.order?.paymentMethod || null,
+          order_id: booking.order?.id || null,
+          customer: {
+            id: booking.customer.id,
+            phone: booking.customer.phone,
+            full_name: getFullName(
+              booking.customer.firstName,
+              booking.customer.lastName,
+            ),
+            first_name: booking.customer.firstName,
+            last_name: booking.customer.lastName,
+            avatar: buildFileUrl(booking.customer.avatar),
+          },
+
+          booking_services: booking.services.map((service) => ({
+            booking_service_id: service.id,
+            booking_service_start_time: formatBookingTime(
+              service.startTime,
+              timezone,
+            ),
+            booking_service_end_time: formatBookingTime(
+              service.endTime,
+              timezone,
+            ),
+            booking_service_duration: service.duration,
+            booking_service_price: service.unitPrice,
+            booking_service_count: service.count,
+            service: {
+              service_id: service.service.id,
+              name: service.service.name,
+              mark: service.service.mark,
+              duration: service.service.duration,
+              avatar: buildFileUrl(service.service.avatar),
+              category: service.service.category,
+              prices: {
+                price: service.service.price?.price,
+                cost_price: service.service.price?.costPrice,
+              },
+            },
+            user: {
+              user_id: service.employee.id,
+              first_name: service.employee.firstName,
+              last_name: service.employee.lastName,
+              full_name: getFullName(
+                service.employee.firstName,
+                service.employee.lastName,
+              ),
+              phone: service.employee.phone,
+              avatar: buildFileUrl(service.employee.avatar),
+            },
+          })),
+        };
+      }),
+    };
   }
 
   async getAll(userId: string, locationId: string, query: GetBookingsDto) {
