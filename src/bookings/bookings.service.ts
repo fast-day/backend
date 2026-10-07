@@ -340,6 +340,8 @@ export class BookingsService {
 
     const rangeStart = fromZonedTime(`${start_date}T00:00`, timezone);
     const rangeEnd = fromZonedTime(`${end_date}T23:59:59.999`, timezone);
+    const rangeStartDate = new Date(`${start_date}T00:00:00.000Z`);
+    const rangeEndDate = new Date(`${end_date}T00:00:00.000Z`);
 
     const where: Prisma.BookingWhereInput = {
       ...(isOwner ? {} : { employeeId: userId }),
@@ -411,7 +413,7 @@ export class BookingsService {
       this.prismaService.schedule.findMany({
         where: {
           userLocation: { userId, locationId },
-          date: { gte: rangeEnd, lte: rangeEnd },
+          date: { gte: rangeStartDate, lte: rangeEndDate },
         },
         select: {
           id: true,

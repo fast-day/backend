@@ -56,15 +56,13 @@ export class GetCalendarBookingsDto extends GetQueryDto {
   @IsString()
   location!: string;
 
-  @ApiProperty({ required: false })
-  @IsOptional()
+  @ApiProperty({ required: true })
   @IsDateString()
-  start_date?: string;
+  start_date!: string;
 
-  @ApiProperty({ required: false })
-  @IsOptional()
+  @ApiProperty({ required: true })
   @IsDateString()
-  end_date?: string;
+  end_date!: string;
 }
 
 export { BookingSortOrder };
