@@ -1,6 +1,11 @@
 import { HttpException, HttpStatus, Injectable } from "@nestjs/common";
 import { PrismaService } from "src/prisma/prisma.service";
-import { ScheduleDto } from "./dto/schedule.dto";
+import {
+  BulkDayOffDto,
+  BulkScheduleDto,
+  ScheduleDto,
+  ScheduleSlotDto,
+} from "./dto/schedule.dto";
 import { getFullName } from "src/shared/utils/get-full-name.util";
 import { fromZonedTime } from "date-fns-tz";
 import { DEFAULT_TIMEZONE } from "src/shared/constant/timezone.constant";
@@ -10,6 +15,8 @@ import { format } from "date-fns/format";
 import { Prisma } from "@prisma/client";
 import { normalizeToEpochTime } from "./utils/normalize-time-util";
 import { addDays } from "date-fns/addDays";
+import { isValid } from "date-fns/isValid";
+import { parseISO } from "date-fns/parseISO";
 
 @Injectable()
 export class ScheduleService {
@@ -43,6 +50,44 @@ export class ScheduleService {
       userLocationId: user.id,
       timezone: user.location.address?.timezone ?? DEFAULT_TIMEZONE,
     };
+  }
+
+  private toDate = (date: string) => new Date(date);
+
+  private badRequest(title: string, detail: string): never {
+    throw new HttpException(
+      { status: HttpStatus.BAD_REQUEST, title, detail },
+      HttpStatus.BAD_REQUEST,
+    );
+  }
+
+  private groupSlots(slots: ScheduleSlotDto[]) {
+    const byDate = new Map<string, { start: string; end: string }[]>();
+
+    for (const { date, start, end } of slots) {
+      if (!isValid(parseISO(date)))
+        this.badRequest("Ошибка расписания", `Некорректная дата ${date}`);
+      if (end <= start)
+        this.badRequest(
+          "Ошибка расписания",
+          `Конец раньше начала: ${date} ${start}–${end}`,
+        );
+      byDate.set(date, [...(byDate.get(date) ?? []), { start, end }]);
+    }
+
+    for (const [date, list] of byDate) {
+      list.sort((a, b) => a.start.localeCompare(b.start));
+      for (let i = 1; i < list.length; i++) {
+        if (list[i].start < list[i - 1].end) {
+          this.badRequest(
+            "Ошибка расписания",
+            `Интервалы пересекаются: ${date}`,
+          );
+        }
+      }
+    }
+
+    return byDate;
   }
 
   async generateDefaultSchedule(
@@ -88,6 +133,66 @@ export class ScheduleService {
     });
 
     return schedule;
+  }
+
+  async bulkCreate(dto: BulkScheduleDto, locationId: string) {
+    const { userLocationId, timezone } = await this.getUserLocationWithTimezone(
+      dto.user_id,
+      locationId,
+    );
+
+    const byDate = this.groupSlots(dto.slots);
+    const dates = [...byDate.keys()];
+
+    return this.prismaService.$transaction(async (t) => {
+      const { count: replaced } = await t.schedule.deleteMany({
+        where: { userLocationId, date: { in: dates.map(this.toDate) } },
+      });
+
+      const schedules = await t.schedule.createManyAndReturn({
+        data: dates.map((d) => ({ userLocationId, date: this.toDate(d) })),
+        select: { id: true, date: true },
+      });
+
+      const idByDate = new Map(
+        schedules.map((s) => [s.date.toISOString().split("T")[0], s.id]),
+      );
+
+      await t.scheduleInterval.createMany({
+        data: dates.flatMap((date) =>
+          byDate.get(date)!.map((i) => ({
+            scheduleId: idByDate.get(date)!,
+            start: normalizeToEpochTime(
+              fromZonedTime(`${date}T${i.start}`, timezone),
+            ),
+            end: normalizeToEpochTime(
+              fromZonedTime(`${date}T${i.end}`, timezone),
+            ),
+          })),
+        ),
+      });
+
+      return { dates, created: schedules.length, replaced };
+    });
+  }
+
+  async bulkDayOff(dto: BulkDayOffDto, locationId: string) {
+    const { userLocationId } = await this.getUserLocationWithTimezone(
+      dto.user_id,
+      locationId,
+    );
+
+    const dates = [...new Set(dto.dates)];
+    for (const d of dates) {
+      if (!isValid(parseISO(d)))
+        this.badRequest("Ошибка расписания", `Некорректная дата ${d}`);
+    }
+
+    const { count } = await this.prismaService.schedule.deleteMany({
+      where: { userLocationId, date: { in: dates.map(this.toDate) } },
+    });
+
+    return { dates, deleted: count };
   }
 
   async create(dto: ScheduleDto, locationId: string) {

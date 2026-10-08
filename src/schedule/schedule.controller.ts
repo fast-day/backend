@@ -12,7 +12,11 @@ import {
   UseGuards,
 } from "@nestjs/common";
 import { ScheduleService } from "./schedule.service";
-import { ScheduleDto } from "./dto/schedule.dto";
+import {
+  BulkDayOffDto,
+  BulkScheduleDto,
+  ScheduleDto,
+} from "./dto/schedule.dto";
 import {
   ApiBearerAuth,
   ApiBody,
@@ -28,6 +32,8 @@ import { ScopeGuard } from "src/access/guard/scope.guard";
 import { AuthGuard } from "src/auth/guard/auth.guard";
 import { ScheduleIdsDto } from "./dto/schedule-ids.dto";
 import {
+  BulkDayOffResponseDto,
+  BulkScheduleResponseDto,
   CreateScheduleResponseDto,
   ScheduleDetailResponseDto,
   ScheduleResponseDto,
@@ -68,6 +74,87 @@ export class ScheduleController {
   @HttpCode(HttpStatus.CREATED)
   create(@Body() dto: ScheduleDto, @Param("location_id") locationId: string) {
     return this.scheduleService.create(dto, locationId);
+  }
+
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: "Массовое создание расписания для сотрудника",
+    description: "Расписание на переданные даты заменяется новым",
+  })
+  @ApiParam({
+    name: "location_id",
+    example: "a8f4ff39-f908-472e-bf19-259b557c952a",
+    description: "ID локации",
+  })
+  @ApiBody({ type: BulkScheduleDto })
+  @ApiResponse({
+    status: HttpStatus.CREATED,
+    description: "Расписание успешно создано",
+    type: BulkScheduleResponseDto,
+  })
+  @ApiResponse({
+    status: HttpStatus.BAD_REQUEST,
+    description: "Некорректные даты или интервалы",
+  })
+  @ApiResponse({
+    status: HttpStatus.NOT_FOUND,
+    description: "not found",
+  })
+  @ApiResponse({
+    status: HttpStatus.UNAUTHORIZED,
+    description: "unauthorized",
+    type: UnAuthorizedDto,
+  })
+  @Post("/:location_id/bulk")
+  @UseGuards(AuthGuard, LoadUserGuard, LocationGuard, ScopeGuard)
+  @Scopes("schedule:create")
+  @HttpCode(HttpStatus.CREATED)
+  bulkCreate(
+    @Body() dto: BulkScheduleDto,
+    @Param("location_id") locationId: string,
+  ) {
+    return this.scheduleService.bulkCreate(dto, locationId);
+  }
+
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: "Массовое назначение выходных дней сотруднику",
+    description:
+      "Расписание на переданные даты удаляется, дни становятся выходными",
+  })
+  @ApiParam({
+    name: "location_id",
+    example: "a8f4ff39-f908-472e-bf19-259b557c952a",
+    description: "ID локации",
+  })
+  @ApiBody({ type: BulkDayOffDto })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: "Выходные успешно назначены",
+    type: BulkDayOffResponseDto,
+  })
+  @ApiResponse({
+    status: HttpStatus.BAD_REQUEST,
+    description: "Некорректные даты",
+  })
+  @ApiResponse({
+    status: HttpStatus.NOT_FOUND,
+    description: "not found",
+  })
+  @ApiResponse({
+    status: HttpStatus.UNAUTHORIZED,
+    description: "unauthorized",
+    type: UnAuthorizedDto,
+  })
+  @Post("/:location_id/bulk/day-off")
+  @UseGuards(AuthGuard, LoadUserGuard, LocationGuard, ScopeGuard)
+  @Scopes("schedule:delete")
+  @HttpCode(HttpStatus.OK)
+  bulkDayOff(
+    @Body() dto: BulkDayOffDto,
+    @Param("location_id") locationId: string,
+  ) {
+    return this.scheduleService.bulkDayOff(dto, locationId);
   }
 
   @ApiBearerAuth()

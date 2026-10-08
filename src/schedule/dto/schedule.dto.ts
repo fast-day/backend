@@ -1,10 +1,13 @@
 import { ApiProperty } from "@nestjs/swagger";
 import { Type } from "class-transformer";
 import {
+  ArrayMaxSize,
+  ArrayMinSize,
   IsArray,
   IsDateString,
   IsISO8601,
   IsString,
+  Matches,
   ValidateNested,
 } from "class-validator";
 
@@ -62,4 +65,34 @@ export class ScheduleDto {
   })
   @IsString()
   user_id!: string;
+}
+
+const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+const TIME_RE = /^([01]\d|2[0-3]):[0-5]\d$/;
+
+export class ScheduleSlotDto {
+  @Matches(DATE_RE) date!: string;
+  @Matches(TIME_RE) start!: string;
+  @Matches(TIME_RE) end!: string;
+}
+
+export class BulkScheduleDto {
+  @IsString() user_id!: string;
+
+  @IsArray()
+  @ArrayMinSize(1)
+  @ArrayMaxSize(1000)
+  @ValidateNested({ each: true })
+  @Type(() => ScheduleSlotDto)
+  slots!: ScheduleSlotDto[];
+}
+
+export class BulkDayOffDto {
+  @IsString() user_id!: string;
+
+  @IsArray()
+  @ArrayMinSize(1)
+  @ArrayMaxSize(366)
+  @Matches(DATE_RE, { each: true })
+  dates!: string[];
 }
