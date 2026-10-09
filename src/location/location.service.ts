@@ -21,7 +21,6 @@ import {
   getPaginationParams,
 } from "src/shared/common/pagination/pagination";
 import { normalizePhone } from "src/shared/utils/phone";
-import { ScheduleService } from "src/schedule/schedule.service";
 
 @Injectable()
 export class LocationService {
@@ -29,7 +28,6 @@ export class LocationService {
     private readonly prismaService: PrismaService,
     private readonly addressService: AddressService,
     private readonly minioService: MinioService,
-    private readonly scheduleService: ScheduleService,
   ) {}
 
   async create(dto: LocationDto, userId: string, companyId: string) {

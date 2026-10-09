@@ -9,7 +9,6 @@ import {
   Patch,
   Post,
   Query,
-  Req,
   UseGuards,
 } from "@nestjs/common";
 import { ScheduleService } from "./schedule.service";
@@ -73,13 +72,8 @@ export class ScheduleController {
   @UseGuards(AuthGuard, LoadUserGuard, LocationGuard, ScopeGuard)
   @Scopes("schedule:create")
   @HttpCode(HttpStatus.CREATED)
-  create(
-    @Body() dto: ScheduleDto,
-    @Param("location_id") locationId: string,
-    @Req() req,
-  ) {
-    const companyId = req.user.companyId;
-    return this.scheduleService.create(dto, locationId, companyId);
+  create(@Body() dto: ScheduleDto, @Param("location_id") locationId: string) {
+    return this.scheduleService.create(dto, locationId);
   }
 
   @ApiBearerAuth()
@@ -118,10 +112,8 @@ export class ScheduleController {
   bulkCreate(
     @Body() dto: BulkScheduleDto,
     @Param("location_id") locationId: string,
-    @Req() req,
   ) {
-    const companyId = req.user.companyId;
-    return this.scheduleService.bulkCreate(dto, locationId, companyId);
+    return this.scheduleService.bulkCreate(dto, locationId);
   }
 
   @ApiBearerAuth()

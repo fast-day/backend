@@ -25,12 +25,14 @@ export class ScheduleService {
   private async getUserLocationWithTimezone(
     userId: string,
     locationId: string,
-  ): Promise<{ userLocationId: string; timezone: string }> {
+  ): Promise<{ userLocationId: string; timezone: string; companyId: string }> {
     const user = await this.prismaService.userLocation.findUnique({
       where: { userId_locationId: { userId, locationId } },
       select: {
         id: true,
-        location: { select: { address: { select: { timezone: true } } } },
+        location: {
+          select: { companyId: true, address: { select: { timezone: true } } },
+        },
       },
     });
 
@@ -49,6 +51,7 @@ export class ScheduleService {
     return {
       userLocationId: user.id,
       timezone: user.location.address?.timezone ?? DEFAULT_TIMEZONE,
+      companyId: user.location.companyId,
     };
   }
 
@@ -135,20 +138,14 @@ export class ScheduleService {
     return schedule;
   }
 
-  async bulkCreate(
-    dto: BulkScheduleDto,
-    locationId: string,
-    companyId: string,
-  ) {
-    const { userLocationId, timezone } = await this.getUserLocationWithTimezone(
-      dto.user_id,
-      locationId,
-    );
+  async bulkCreate(dto: BulkScheduleDto, locationId: string) {
+    const { userLocationId, timezone, companyId } =
+      await this.getUserLocationWithTimezone(dto.user_id, locationId);
 
     const byDate = this.groupSlots(dto.slots);
     const dates = [...byDate.keys()];
 
-    return this.prismaService.$transaction(async (t) => {
+    const schedule = this.prismaService.$transaction(async (t) => {
       const { count: replaced } = await t.schedule.deleteMany({
         where: { userLocationId, date: { in: dates.map(this.toDate) } },
       });
@@ -176,13 +173,15 @@ export class ScheduleService {
         ),
       });
 
-      await this.prismaService.company.update({
-        where: { id: companyId },
-        data: { hasSchedules: true },
-      });
-
       return { dates, created: schedules.length, replaced };
     });
+
+    await this.prismaService.company.update({
+      where: { id: companyId },
+      data: { hasSchedules: true },
+    });
+
+    return schedule;
   }
 
   async bulkDayOff(dto: BulkDayOffDto, locationId: string) {
@@ -204,13 +203,11 @@ export class ScheduleService {
     return { dates, deleted: count };
   }
 
-  async create(dto: ScheduleDto, locationId: string, companyId: string) {
+  async create(dto: ScheduleDto, locationId: string) {
     const { user_id: userId } = dto;
 
-    const { userLocationId, timezone } = await this.getUserLocationWithTimezone(
-      userId,
-      locationId,
-    );
+    const { userLocationId, timezone, companyId } =
+      await this.getUserLocationWithTimezone(userId, locationId);
 
     const isExist = await this.prismaService.schedule.findFirst({
       where: { date: new Date(dto.date), userLocationId },
@@ -269,13 +266,12 @@ export class ScheduleService {
         }),
         select: { start: true, end: true },
       });
-
-      await this.prismaService.company.update({
-        where: { id: companyId },
-        data: { hasSchedules: true },
-      });
-
       return { ...sch, intervals };
+    });
+
+    await this.prismaService.company.update({
+      where: { id: companyId },
+      data: { hasSchedules: true },
     });
 
     return {
@@ -345,10 +341,8 @@ export class ScheduleService {
         HttpStatus.NOT_FOUND,
       );
 
-    const { userLocationId, timezone } = await this.getUserLocationWithTimezone(
-      userId,
-      locationId,
-    );
+    const { userLocationId, timezone, companyId } =
+      await this.getUserLocationWithTimezone(userId, locationId);
 
     const isExist = await this.prismaService.schedule.findFirst({
       where: { id: scheduleId, userLocationId },
@@ -432,6 +426,11 @@ export class ScheduleService {
       });
 
       return result;
+    });
+
+    await this.prismaService.company.update({
+      where: { id: companyId },
+      data: { hasSchedules: true },
     });
 
     const res = {
