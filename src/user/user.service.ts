@@ -108,6 +108,7 @@ export class UserService {
             hasEmployees: true,
             hasOrders: true,
             hasServices: true,
+            hasSchedules: true,
           },
         },
       },
@@ -166,6 +167,7 @@ export class UserService {
           has_bookings: user.company.hasBookings,
           has_orders: user.company.hasOrders,
           has_services: user.company.hasServices,
+          has_schedules: user.company.hasSchedules,
         }
       : null;
 

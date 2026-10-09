@@ -501,6 +501,7 @@ model Company {
   hasBookings   Boolean       @default(false)   @map("has_bookings")
   hasOrders     Boolean       @default(false)   @map("has_orders")
   hasServices   Boolean       @default(false)   @map("has_services")
+  hasSchedules  Boolean       @default(false)   @map("has_schedules")
 
   services      Service[]     @relation("company_service")
   serviceCategory ServiceCategory[]             @relation("company_service_category")

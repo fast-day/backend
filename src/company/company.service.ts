@@ -90,6 +90,7 @@ export class CompanyService {
           hasEmployees: true,
           hasOrders: true,
           hasServices: true,
+          hasSchedules: true,
           users: {
             select: {
               id: true,
@@ -157,6 +158,7 @@ export class CompanyService {
       has_bookings: company.hasBookings,
       has_orders: company.hasOrders,
       has_services: company.hasServices,
+      has_schedules: company.hasSchedules,
       settings: {
         pages: company.users[0].settings?.pages.map((p) => ({
           page: p.page,
