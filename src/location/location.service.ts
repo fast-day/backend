@@ -139,7 +139,7 @@ export class LocationService {
 
     const address = await this.addressService.create(t, dto, location.id);
 
-    const userLocation = await t.userLocation.create({
+    await t.userLocation.create({
       data: {
         userId,
         locationId: location.id,
@@ -148,11 +148,11 @@ export class LocationService {
       select: { id: true },
     });
 
-    await this.scheduleService.generateDefaultSchedule(
-      userLocation.id,
-      address.timezone,
-      t,
-    );
+    // await this.scheduleService.generateDefaultSchedule(
+    //   userLocation.id,
+    //   address.timezone,
+    //   t,
+    // );
 
     return {
       ...location,

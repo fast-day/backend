@@ -135,7 +135,11 @@ export class ScheduleService {
     return schedule;
   }
 
-  async bulkCreate(dto: BulkScheduleDto, locationId: string) {
+  async bulkCreate(
+    dto: BulkScheduleDto,
+    locationId: string,
+    companyId: string,
+  ) {
     const { userLocationId, timezone } = await this.getUserLocationWithTimezone(
       dto.user_id,
       locationId,
@@ -172,6 +176,11 @@ export class ScheduleService {
         ),
       });
 
+      await this.prismaService.company.update({
+        where: { id: companyId },
+        data: { hasSchedules: true },
+      });
+
       return { dates, created: schedules.length, replaced };
     });
   }
@@ -195,7 +204,7 @@ export class ScheduleService {
     return { dates, deleted: count };
   }
 
-  async create(dto: ScheduleDto, locationId: string) {
+  async create(dto: ScheduleDto, locationId: string, companyId: string) {
     const { user_id: userId } = dto;
 
     const { userLocationId, timezone } = await this.getUserLocationWithTimezone(
@@ -259,6 +268,11 @@ export class ScheduleService {
           };
         }),
         select: { start: true, end: true },
+      });
+
+      await this.prismaService.company.update({
+        where: { id: companyId },
+        data: { hasSchedules: true },
       });
 
       return { ...sch, intervals };
