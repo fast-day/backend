@@ -17,6 +17,8 @@ import { Prisma } from "@prisma/client";
 import { customAlphabet } from "nanoid";
 import { toGenitive } from "src/shared/utils/petrovich.util";
 import { getFullName } from "src/shared/utils/get-full-name.util";
+import { WIDGET_URL } from "src/shared/constant/site.constant";
+import { QrService } from "src/qr/qr.service";
 
 @Injectable()
 export class CompanyService {
@@ -25,6 +27,7 @@ export class CompanyService {
     private readonly userService: UserService,
     private readonly locationService: LocationService,
     private readonly minioService: MinioService,
+    private readonly qr: QrService,
   ) {}
 
   private async generatePublicName(slug: string, t: Prisma.TransactionClient) {
@@ -130,6 +133,15 @@ export class CompanyService {
         company.id,
       );
 
+      const widgetQrCode = await this.qr.generate(
+        `${WIDGET_URL}/${company.publicName}`,
+      );
+
+      await t.company.update({
+        where: { id: company.id },
+        data: { widgetQrCode },
+      });
+
       return { ...company, location };
     });
 
@@ -150,7 +162,8 @@ export class CompanyService {
       company: {
         id: company.id,
         name: company.name,
-        site_url: `http://app.fast-day.ru/${company.publicName}`,
+        // site_url: `http://app.fast-day.ru/${company.publicName}`,
+        widget_url: `${WIDGET_URL}/${company.publicName}`,
         currency: company.currency,
       },
       has_customers: company.hasCustomers,

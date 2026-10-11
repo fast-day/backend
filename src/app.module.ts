@@ -32,6 +32,7 @@ import { OnboardingModule } from "./onboarding/onboarding.module";
 import { CustomerDocumentsModule } from "./customer_documents/customer_documents.module";
 import { InvoicesModule } from "./invoices/invoices.module";
 import { TransactionsModule } from "./transactions/transactions.module";
+import { QrModule } from "./qr/qr.module";
 
 @Module({
   imports: [
@@ -68,6 +69,7 @@ import { TransactionsModule } from "./transactions/transactions.module";
     CustomerDocumentsModule,
     InvoicesModule,
     TransactionsModule,
+    QrModule,
   ],
   controllers: [AppController],
   providers: [AppService],
