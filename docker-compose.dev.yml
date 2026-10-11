@@ -68,9 +68,11 @@ services:
       mc mb --ignore-existing minio/user-avatars;
       mc mb --ignore-existing minio/service-avatars;
       mc mb --ignore-existing minio/company-avatars;
+      mc mb --ignore-existing minio/qrcode;
       mc anonymous set public minio/user-avatars;
       mc anonymous set public minio/service-avatars;
       mc anonymous set public minio/company-avatars;
+      mc anonymous set public minio/qrcode;
       tail -f /dev/null
       "
     restart: on-failure

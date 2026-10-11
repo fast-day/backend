@@ -84,7 +84,7 @@ export class MinioService {
       throw new HttpException(
         {
           status: HttpStatus.INTERNAL_SERVER_ERROR,
-          title: "Ошибка загрузки документа",
+          title: "Неудалось загрузить файл",
           detail: "Хранилище недоступно",
           meta: { bucket },
         },
@@ -95,8 +95,10 @@ export class MinioService {
       "Content-Type": mimetype,
     });
 
-    return fileName;
+    return `${bucket}/${fileName}`;
   }
+
+  async uploadQrCode() {}
 
   async getFileStream(bucket: string, fileName: string) {
     return this.minioClient.getObject(bucket, fileName);

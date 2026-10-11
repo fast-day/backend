@@ -488,6 +488,7 @@ model Company {
   currency      CURRENCY
 
   logo          String?
+  widgetQrCode  String?       @map("widget_qr_code")
 
   users         User[]        @relation("company_user")
 

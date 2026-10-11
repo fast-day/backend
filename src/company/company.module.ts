@@ -4,9 +4,10 @@ import { CompanyController } from "./company.controller";
 import { UserModule } from "src/user/user.module";
 import { LocationModule } from "src/location/location.module";
 import { SpecializationService } from "./specialization.service";
+import { QrModule } from "src/qr/qr.module";
 
 @Module({
-  imports: [UserModule, LocationModule],
+  imports: [UserModule, LocationModule, QrModule],
   controllers: [CompanyController],
   providers: [CompanyService, SpecializationService],
   exports: [CompanyService, SpecializationService],
