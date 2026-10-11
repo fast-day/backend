@@ -3,7 +3,6 @@ import {
   Controller,
   Get,
   HttpStatus,
-  Param,
   Req,
   Res,
   UseGuards,
@@ -43,15 +42,10 @@ export class QrController {
     status: HttpStatus.NOT_FOUND,
     description: "not found",
   })
-  @Get(":bucket/:file/download")
+  @Get("widget/download")
   @UseGuards(AuthGuard, LoadUserGuard, CompanyGuard)
-  download(
-    @Req() req,
-    @Param("bucket") bucket: string,
-    @Param("file") file: string,
-    @Res() res: Response,
-  ) {
+  download(@Req() req, @Res() res: Response) {
     const companyId = req.user.companyId;
-    return this.qrService.download(bucket, file, companyId, res);
+    return this.qrService.download(companyId, res);
   }
 }

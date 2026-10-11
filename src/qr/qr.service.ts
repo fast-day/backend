@@ -41,36 +41,30 @@ export class QrService {
     return await this.minio.uploadDocument(this.bucket, qr, key, "image/png");
   }
 
-  async download(
-    bucket: string,
-    fileName: string,
-    companyId: string,
-    res: Response,
-  ) {
-    const file = `${bucket}/${fileName}`;
-    const isFileExist = await this.prisma.company.findFirst({
-      where: { id: companyId, widgetQrCode: file },
+  async download(companyId: string, res: Response) {
+    const company = await this.prisma.company.findUnique({
+      where: { id: companyId },
+      select: { publicName: true, widgetQrCode: true },
     });
 
-    if (!isFileExist)
+    if (!company?.widgetQrCode)
       throw new HttpException(
         {
           status: HttpStatus.NOT_FOUND,
           title: "Файл не найден",
           detail: "Похоже файла не существует",
-          meta: { bucket, file_name: fileName },
         },
         HttpStatus.NOT_FOUND,
       );
 
+    const [bucket, fileName] = company.widgetQrCode.split("/");
+
     await this.minio.download(
       bucket,
       fileName,
-      { name: fileName, format: "png" },
+      { name: `qr-online-zapis-${company.publicName}`, format: "png" },
       res,
       "attachment",
     );
-
-    return true;
   }
 }
