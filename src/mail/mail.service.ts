@@ -1,16 +1,17 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
-import { HttpService } from "@nestjs/axios";
-import { firstValueFrom } from "rxjs";
 import { BookingStatus } from "@prisma/client";
+import { SESv2Client, SendEmailCommand } from "@aws-sdk/client-sesv2";
 
 interface IBookingWithRelationService {
   booking_service_id: string;
-  booking_service_price: number | null;
+  booking_service_start_time: string;
+  booking_service_end_time: string;
+  booking_service_duration: number;
+  booking_service_price: number;
   booking_service_count: number;
-  booking_service_duration: number | null;
   service: {
-    id: string;
+    service_id: string;
     name: string;
     duration: number;
     avatar: string | null;
@@ -27,7 +28,7 @@ interface BookingWithRelations {
   tag: string | null;
   start_time: string;
   end_time: string;
-  date: Date;
+  date: string;
   comment: string | null;
   customer: {
     id: string;
@@ -37,75 +38,50 @@ interface BookingWithRelations {
     last_name: string | null;
     avatar: string | null;
   };
-  employee: {
-    id: string;
-    first_name: string;
-    last_name: string | null;
-    full_name: string;
-    avatar: string | null;
-    phone: string;
-  };
   services: IBookingWithRelationService[];
 }
 
 @Injectable()
 export class MailService {
   private readonly logger = new Logger(MailService.name);
-  private readonly apiUrl =
-    "https://api.rusender.ru/api/v1/external-mails/send";
+  private readonly url = "https://postbox.cloud.yandex.net";
+  private readonly from: string;
+  private readonly client: SESv2Client;
 
-  constructor(
-    private readonly httpService: HttpService,
-    private readonly configService: ConfigService,
-  ) {}
-
-  private formatDate(date: Date): string {
-    const months = [
-      "января",
-      "февраля",
-      "марта",
-      "апреля",
-      "мая",
-      "июня",
-      "июля",
-      "августа",
-      "сентября",
-      "октября",
-      "ноября",
-      "декабря",
-    ];
-    return `${date.getDate()} ${months[date.getMonth()]} ${date.getFullYear()}`;
+  constructor(conf: ConfigService) {
+    this.from = conf.getOrThrow<string>("MAIL_FROM");
+    this.client = new SESv2Client({
+      region: "ru-central1",
+      endpoint: this.url,
+      credentials: {
+        accessKeyId: conf.getOrThrow<string>("YANDEX_POSTBOX_KEY_ID"),
+        secretAccessKey: conf.getOrThrow<string>("YANDEX_POSTBOX_SECRET"),
+      },
+    });
   }
 
-  private async send(
-    to: string,
-    toName: string,
-    subject: string,
-    html: string,
-  ) {
-    await firstValueFrom(
-      this.httpService.post(
-        this.apiUrl,
-        {
-          idempotencyKey: crypto.randomUUID(),
-          mail: {
-            to: { email: to, name: toName },
-            from: {
-              email: this.configService.get("MAIL_FROM"),
-              name: this.configService.get("MAIL_FROM_NAME"),
+  async send(to: string, subject: string, html: string, text?: string) {
+    try {
+      await this.client.send(
+        new SendEmailCommand({
+          FromEmailAddress: this.from,
+          Destination: { ToAddresses: [to] },
+          Content: {
+            Simple: {
+              Subject: { Data: subject, Charset: "UTF-8" },
+              Body: {
+                Html: { Data: html, Charset: "UTF-8" },
+                ...(text && { Text: { Data: text, Charset: "UTF-8" } }),
+              },
             },
-            subject,
-            html,
           },
-        },
-        {
-          headers: {
-            "Content-Type": "application/json",
-            "X-Api-Key": this.configService.get("RUSENDER_API_KEY"),
-          },
-        },
-      ),
-    );
+        }),
+      );
+    } catch (e) {
+      this.logger.error(
+        `Mail to ${to} failed: ${e instanceof Error ? e.message : String(e)}`,
+      );
+    }
   }
 
   async sendLocationAddedNotify(email: string, name: string) {
@@ -113,12 +89,10 @@ export class MailService {
       await this.send(
         email,
         name,
-        "Вас добавили в новую локацию",
         this.locationAddedTemplate(name),
+        "Вас добавили в новую локацию",
       );
-      console.log("Вас добавили в новую локацию:", email, name);
     } catch (err) {
-      console.log(" Вас добавили в новую локацию err", err);
       this.logger.error(`Ошибка отправки уведомления ${email}`, err);
     }
   }
@@ -128,10 +102,9 @@ export class MailService {
       await this.send(
         email,
         name,
-        "Приглашение на регистрацию",
         this.inviteTemplate(name, url),
+        "Приглашение на регистрацию",
       );
-      console.log("Приглашение на регистрацию:", email, name, url);
     } catch (err) {
       console.log("Приглашение на регистрацию err", err);
       this.logger.error(`Ошибка отправки приглашения ${email}`, err);
@@ -142,13 +115,11 @@ export class MailService {
     try {
       await this.send(
         email,
-        booking.employee.full_name,
-        `Новая запись от ${booking.customer.full_name}`,
+        "У вас новая запись",
         this.newBookingTemplate(booking),
+        `Новая запись от ${booking.customer.full_name}`,
       );
-      console.log("Уведомление о новой записи отправлено:", email);
     } catch (err) {
-      console.log("sendNewBookingNotify err", err);
       this.logger.error(`Ошибка отправки уведомления о записи ${email}`, err);
     }
   }
@@ -199,18 +170,9 @@ export class MailService {
   }
 
   private newBookingTemplate(booking: BookingWithRelations): string {
-    const {
-      employee,
-      customer,
-      services,
-      date,
-      start_time,
-      end_time,
-      comment,
-      tag,
-    } = booking;
+    const { customer, services, date, start_time, end_time, comment, tag } =
+      booking;
     const bookingUrl = `${process.env.APP_BASE_URL}/bookings/${booking.id}`;
-    const formattedDate = this.formatDate(date);
 
     // const totalPrice = services.reduce(
     //   (sum, s) => sum + Number(s.booking_service_price),
@@ -232,9 +194,7 @@ export class MailService {
     const servicesHtml = services
       .map((s) => {
         const servicePrice = s.booking_service_price ?? s.service.prices.price;
-        const priceLabel = servicePrice
-          ? `${servicePrice} ₽`
-          : "по договорённости";
+        const priceLabel = servicePrice ? `${servicePrice} ₽` : "Бесплатно";
         const duration = s.booking_service_duration ?? s.service.duration;
 
         return `
@@ -257,12 +217,11 @@ export class MailService {
         </div>
 
         <div style="padding:32px 36px;">
-          <p style="font-size:20px;font-weight:bold;color:#322c27;margin:0 0 6px;">Привет, ${employee.first_name}! 👋</p>
-          <p style="font-size:14px;color:#5b5046;margin:0 0 28px;">К вам записался новый клиент. Вот детали бронирования:</p>
+          <p style="font-size:20px;font-weight:bold;color:#322c27;margin:0 0 6px;">У вас новая запись</p>
 
           <div style="background:#f0ebe5;border:1px solid #e1dcd6;border-radius:8px;overflow:hidden;margin-bottom:24px;">
             <div style="background:#5b5046;padding:12px 20px;font-size:11px;font-weight:bold;color:#efeae4;letter-spacing:0.08em;text-transform:uppercase;">
-              Детали записи · ${tag ?? booking.id}
+              Детали записи · ${tag}
             </div>
             <div style="padding:20px;">
 
@@ -289,7 +248,7 @@ export class MailService {
                 <div style="width:34px;height:34px;border-radius:8px;background:#e5e1db;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:16px;">📅</div>
                 <div>
                   <div style="font-size:11px;color:#8a7f76;font-weight:bold;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:2px;">Дата</div>
-                  <div style="font-size:14px;color:#322c27;font-weight:500;">${formattedDate}</div>
+                  <div style="font-size:14px;color:#322c27;font-weight:500;">${date}</div>
                 </div>
               </div>
 

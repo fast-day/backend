@@ -474,6 +474,6 @@ export class BookingsPublicService {
       comment: dto.comment,
     };
 
-    return await this.bookingService.create(createDto, company.id);
+    return await this.bookingService.create(createDto, company.id, "");
   }
 }

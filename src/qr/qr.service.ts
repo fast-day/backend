@@ -1,11 +1,16 @@
-import { Injectable } from "@nestjs/common";
+import { HttpException, HttpStatus, Injectable } from "@nestjs/common";
 import { MinioService } from "src/minio/minio.service";
 import * as QRCode from "qrcode";
 import { createHash } from "crypto";
+import { Response } from "express";
+import { PrismaService } from "src/prisma/prisma.service";
 
 @Injectable()
 export class QrService {
-  public constructor(private readonly minio: MinioService) {}
+  public constructor(
+    private readonly prisma: PrismaService,
+    private readonly minio: MinioService,
+  ) {}
 
   private readonly bucket = "qrcode";
   private logo: Buffer | undefined;
@@ -34,5 +39,32 @@ export class QrService {
     //   .toBuffer();
 
     return await this.minio.uploadDocument(this.bucket, qr, key, "image/png");
+  }
+
+  async download(companyId: string, res: Response) {
+    const company = await this.prisma.company.findUnique({
+      where: { id: companyId },
+      select: { publicName: true, widgetQrCode: true },
+    });
+
+    if (!company?.widgetQrCode)
+      throw new HttpException(
+        {
+          status: HttpStatus.NOT_FOUND,
+          title: "Файл не найден",
+          detail: "Похоже файла не существует",
+        },
+        HttpStatus.NOT_FOUND,
+      );
+
+    const [bucket, fileName] = company.widgetQrCode.split("/");
+
+    await this.minio.download(
+      bucket,
+      fileName,
+      { name: `qr-online-zapis-${company.publicName}`, format: "png" },
+      res,
+      "attachment",
+    );
   }
 }
