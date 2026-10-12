@@ -74,7 +74,8 @@ export class BookingsController {
   @HttpCode(HttpStatus.CREATED)
   create(@Body() dto: BookingCreateDto, @Req() req) {
     const companyId = req.user.companyId;
-    return this.bookingsService.create(dto, companyId);
+    const userEmail = req.user.email;
+    return this.bookingsService.create(dto, companyId, userEmail);
   }
 
   @ApiBearerAuth()

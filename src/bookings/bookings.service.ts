@@ -17,7 +17,6 @@ import {
 import { normalizePhone } from "src/shared/utils/phone";
 import { getFullName } from "src/shared/utils/get-full-name.util";
 import { calcEndTimeDate } from "src/shared/utils/calc-end-time.util";
-import { BookingCreateCustomerOldDto } from "./dto/booking-create-customer.dto";
 import { getDayRange } from "./utils/day-range.util";
 import { getBookingTimeRange } from "./utils/time-range.util";
 import {
@@ -30,15 +29,17 @@ import { GetCustomerBookingsDto } from "./dto/get-customer-bookings.dto";
 import { UpdateBookingServicesDto } from "./dto/booking-update-service.dto";
 import { BookingValidationService } from "./validation/booking-validation.service";
 import { formatIntervalTime } from "src/shared/utils/format-time.util";
+import { MailService } from "src/mail/mail.service";
 
 @Injectable()
 export class BookingsService {
   public constructor(
     private readonly prismaService: PrismaService,
     private readonly validationService: BookingValidationService,
+    private readonly mailService: MailService,
   ) {}
 
-  async create(dto: BookingCreateDto, company_id: string) {
+  async create(dto: BookingCreateDto, company_id: string, userEmail: string) {
     const timezone = await this.validationService.getLocationTimezone(
       dto.location_id,
     );
@@ -195,6 +196,51 @@ export class BookingsService {
 
       const { start, end } = getBookingTimeRange(booking.services);
 
+      void this.mailService.sendNewBookingNotify(userEmail, {
+        id: booking.id,
+        status: booking.status,
+        tag: booking.tag,
+        comment: booking.comment,
+        start_time: formatBookingTime(start, timezone),
+        end_time: formatBookingTime(end, timezone),
+        date: formatDateInTimezone(start, timezone),
+        customer: {
+          id: booking.customer.id,
+          phone: booking.customer.phone,
+          full_name: getFullName(
+            booking.customer.firstName,
+            booking.customer.lastName,
+          ),
+          first_name: booking.customer.firstName,
+          last_name: booking.customer.lastName,
+          avatar: buildFileUrl(booking.customer.avatar),
+        },
+        services: booking.services.map((service) => ({
+          booking_service_id: service.id,
+          booking_service_start_time: formatBookingTime(
+            service.startTime,
+            timezone,
+          ),
+          booking_service_end_time: formatBookingTime(
+            service.endTime,
+            timezone,
+          ),
+          booking_service_duration: service.duration,
+          booking_service_price: service.unitPrice,
+          booking_service_count: service.count,
+          service: {
+            service_id: service.service.id,
+            name: service.service.name,
+            duration: service.service.duration,
+            avatar: buildFileUrl(service.service.avatar),
+            prices: {
+              price: service.service.price?.price,
+              cost_price: service.service.price?.costPrice,
+            },
+          },
+        })),
+      });
+
       const res = {
         id: booking.id,
         status: booking.status,
@@ -344,6 +390,7 @@ export class BookingsService {
     const rangeEndDate = new Date(`${end_date}T00:00:00.000Z`);
 
     const where: Prisma.BookingWhereInput = {
+      locationId,
       ...(isOwner ? {} : { employeeId: userId }),
       services: {
         some: {
@@ -1283,160 +1330,10 @@ export class BookingsService {
 
     const res = bookings.map((booking) => ({
       id: booking.id,
-      // company_name: booking.company.publicName,
       status: booking.status,
       tag: booking.tag,
-      // date: booking.date.toISOString().split("T")[0],
-      // employee: {
-      //   id: booking.employee.id,
-      //   first_name: booking.employee.firstName,
-      //   last_name: booking.employee.lastName,
-      //   phone: booking.employee.phone,
-      //   avatar: buildFileUrl(booking.employee.avatar),
-      //   position: booking.employee.position,
-      // },
-      // location: {
-      //   id: booking.location.id,
-      //   name: booking.location.name,
-      //   avatar: buildFileUrl(booking.location.avatar),
-      //   address: booking.location.address,
-      // },
-      // services: booking.services.map((service) => ({
-      //   booking_service_id: service.id,
-      //   booking_service_price: service.price,
-      //   booking_service_count: service.count,
-      //   booking_service_duration: service.duration,
-      //   service: {
-      //     id: service.service.id,
-      //     name: service.service.name,
-      //     duration: service.service.duration,
-      //     avatar: buildFileUrl(service.service.avatar),
-      //     prices: {
-      //       price: service.service.price?.price,
-      //       cost_price: service.service.price?.costPrice,
-      //     },
-      //   },
-      // })),
-
-      /*
-        !!=====!! СТАРЫЙ ВЫВОД УСЛУГ !!=====!!
-      */
-      // service: {
-      //   id: booking.service.id,
-      //   name: booking.service.name,
-      //   public_name: booking.service.publicName,
-      //   avatar: buildFileUrl(booking.service.avatar),
-      //   mark: booking.service.mark,
-      //   duration: booking.service.duration,
-      //   category: booking.service.category || null,
-      // },
     }));
 
     return res;
-  }
-
-  /*
-      ===== СОЗДАНИЕ БРОНИРОВАНИЯ И ОФОРМЛЕНИЕ ЗАКАЗА СО СТОРОНЫ КЛИЕНТА =====
-    */
-  // eslint-disable-next-line @typescript-eslint/require-await
-  async createCustomerBooking(
-    dto: BookingCreateCustomerOldDto,
-    customerId: string,
-  ) {
-    return { dto, customerId };
-    // const company = await this.prismaService.company.findUnique({
-    //   where: { publicName: dto.company },
-    //   select: { id: true },
-    // });
-    // if (!company)
-    //   throw new HttpException(
-    //     {
-    //       status: HttpStatus.NOT_FOUND,
-    //       title: "Ошибка",
-    //       detail: "Компания не найдена.",
-    //       meta: { public_name: dto.company },
-    //     },
-    //     HttpStatus.NOT_FOUND,
-    //   );
-    // const customer = await this.prismaService.customerAccount.findUnique({
-    //   where: { id: customerId },
-    //   select: { customerId: true },
-    // });
-    // if (!customer)
-    //   throw new HttpException(
-    //     {
-    //       status: HttpStatus.NOT_FOUND,
-    //       title: "Ошибка",
-    //       detail: "Клиент не найден.",
-    //       meta: { customer_id: customer },
-    //     },
-    //     HttpStatus.NOT_FOUND,
-    //   );
-    // const createDto = {
-    //   start_time: dto.start_time,
-    //   end_time: dto.end_time,
-    //   date: dto.date,
-    //   comment: dto.comment,
-    //   location_id: dto.location_id,
-    //   services: dto.services,
-    //   employee_id: dto.employee_id,
-    //   customer_id: customer?.customerId,
-    //   status: dto.status,
-    //   payment_method: dto.payment_method,
-    // } satisfies BookingCreateDto;
-    // return this.prismaService.$transaction(async (t) => {
-    //   const booking = await this.create(createDto, company.id);
-    //   // const subtotal = booking.service.prices.price ?? 0;
-    //   const subtotal = booking.services.reduce(
-    //     (sum, s) => sum + Number(s.booking_service_price),
-    //     0,
-    //   );
-    //   const order = await t.order.create({
-    //     data: {
-    //       status: "open",
-    //       subtotal,
-    //       tag: generateOrderTag(),
-    //       companyId: company.id,
-    //       total: subtotal,
-    //       paymentMethod: dto.payment_method,
-    //       bookings: { connect: { id: booking.id } },
-    //     },
-    //     select: {
-    //       id: true,
-    //       tag: true,
-    //       paymentMethod: true,
-    //       status: true,
-    //       total: true,
-    //       subtotal: true,
-    //       comment: true,
-    //     },
-    //   });
-    //   await t.booking.update({
-    //     where: { id: booking.id },
-    //     data: { orderId: order.id, status: "new" },
-    //   });
-    //   await this.mailService.sendNewBookingNotify(booking.employee.email, {
-    //     ...booking,
-    //     date: new Date(booking.date),
-    //   });
-    //   return {
-    //     id: booking.id,
-    //     date: booking.date,
-    //     start_time: booking.start_time,
-    //     end_time: booking.end_time,
-    //     status: booking.status,
-    //     tag: booking.tag,
-    //     order: {
-    //       id: order.id,
-    //       tag: order.tag,
-    //       status: order.status,
-    //       payment_method: order.paymentMethod,
-    //       total: order.total,
-    //       subtotal: order.subtotal,
-    //     },
-    //   };
-    // });
-    // await this.orderService.create();
-    // return res;
   }
 }
