@@ -62,6 +62,8 @@ export class BookingsPublicService {
       select: { id: true },
     });
 
+    console.log(locationId, user);
+
     if (!user)
       throw new HttpException(
         {
@@ -167,6 +169,7 @@ export class BookingsPublicService {
       employee,
       company: {
         ...company,
+        location_uuid: location.id,
         timezone: location.timezone,
       },
     };
