@@ -7,7 +7,7 @@ import {
   IsUUID,
   ValidateNested,
 } from "class-validator";
-import { Type } from "class-transformer";
+import { Transform, Type } from "class-transformer";
 import { ApiProperty } from "@nestjs/swagger";
 
 export class LocationAddressDto {
@@ -16,7 +16,7 @@ export class LocationAddressDto {
     description: "Полный адрес локации",
   })
   @IsString()
-  full_address: string;
+  full_address!: string;
 
   @ApiProperty({
     example: "ул. Вайнера",
@@ -71,7 +71,7 @@ export class LocationsDto {
   })
   @IsUUID()
   @IsString()
-  id: string;
+  id!: string;
 
   @ApiProperty({
     example: "Яндекс",
@@ -79,7 +79,7 @@ export class LocationsDto {
     description: "Название",
   })
   @IsString()
-  name: string;
+  name!: string;
 
   @ApiProperty({
     example: "71657a704cb3726f8f1116879bd6f908.jpg",
@@ -98,15 +98,16 @@ export class LocationsDto {
   })
   @IsString()
   @IsOptional()
-  description: string | null;
+  description!: string | null;
 
   @ApiProperty({
     example: "8 999 999 99 99",
     required: true,
     description: "Номер телефона",
   })
-  @IsPhoneNumber("RU")
-  phone: string;
+  @Transform(({ value }) => (value === "" ? undefined : value))
+  @IsPhoneNumber()
+  phone!: string;
 
   @ApiProperty({
     example: false,
@@ -124,7 +125,7 @@ export class LocationsDto {
   })
   @IsArray()
   @IsString({ each: true })
-  category: string[];
+  category!: string[];
 
   @ApiProperty({
     example: ["WiFi", "Кофе", "Печеньки"],
@@ -133,7 +134,7 @@ export class LocationsDto {
   })
   @IsArray()
   @IsString({ each: true })
-  comfort: string[];
+  comfort!: string[];
 
   @ApiProperty({
     example: {
@@ -149,5 +150,5 @@ export class LocationsDto {
   })
   @ValidateNested({ each: true })
   @Type(() => LocationAddressDto)
-  address: LocationAddressDto;
+  address!: LocationAddressDto;
 }

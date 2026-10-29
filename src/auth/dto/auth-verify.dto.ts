@@ -1,9 +1,11 @@
+import { Transform } from "class-transformer";
 import { IsPhoneNumber, IsString } from "class-validator";
 
 export class AuthVerifyDto {
-  @IsPhoneNumber("RU")
-  phone: string;
+  @Transform(({ value }) => (value === "" ? undefined : value))
+  @IsPhoneNumber()
+  phone!: string;
 
   @IsString()
-  code: string;
+  code!: string;
 }

@@ -1,5 +1,6 @@
 import { ApiProperty } from "@nestjs/swagger";
 import { ROLE } from "@prisma/client";
+import { Transform } from "class-transformer";
 import {
   IsEmail,
   IsEnum,
@@ -14,21 +15,22 @@ export class UserCreateDto {
   @IsString()
   @IsEmail()
   @IsNotEmpty({ message: "Обязательное поле" })
-  email: string;
+  email!: string;
 
-  @IsPhoneNumber("RU")
+  @Transform(({ value }) => (value === "" ? undefined : value))
+  @IsPhoneNumber()
   @IsNotEmpty({ message: "Обязательное поле" })
-  phone: string;
+  phone!: string;
 
   @IsString()
   @IsNotEmpty({ message: "Обязательное поле" })
-  first_name: string;
-  last_name: string;
+  first_name!: string;
+  last_name!: string;
 
   @IsString()
   @MinLength(8, { message: "Пароль должен быть не меньше 8 символов" })
   @IsNotEmpty({ message: "Придумайте пароль" })
-  password: string;
+  password!: string;
 }
 
 export class UserDetailDto {
@@ -38,46 +40,47 @@ export class UserDetailDto {
   })
   @IsUUID()
   @IsString()
-  id: string;
+  id!: string;
 
   @ApiProperty({
     example: "example@gmail.com",
     description: "email",
   })
   @IsEmail()
-  email: string;
+  email!: string;
 
   @ApiProperty({
     example: "+7 999 999 99 99",
   })
-  @IsPhoneNumber("RU")
-  phone: string;
+  @Transform(({ value }) => (value === "" ? undefined : value))
+  @IsPhoneNumber()
+  phone!: string;
 
   @ApiProperty({
     example: "employee",
     description: "role",
   })
   @IsEnum(ROLE)
-  role: ROLE;
+  role!: ROLE;
 
   @ApiProperty({
     example: "Имя",
     description: "first_name",
   })
   @IsString()
-  first_name: string;
+  first_name!: string;
 
   @ApiProperty({
     example: "Фамилия",
     description: "last_name",
   })
   @IsString()
-  last_name: string;
+  last_name!: string;
 
   @ApiProperty({
     example: "d01e304sc2hc4c9372849a41a182dj3f.jpeg",
     description: "avatar",
   })
   @IsString()
-  avatar: string;
+  avatar!: string;
 }

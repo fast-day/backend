@@ -1,5 +1,5 @@
 import { ApiProperty } from "@nestjs/swagger/dist/decorators";
-import { Type } from "class-transformer";
+import { Transform, Type } from "class-transformer";
 import {
   IsArray,
   IsBoolean,
@@ -18,7 +18,7 @@ export class LocationAddressMapDto {
     description: "Широта",
   })
   @IsNumber({ maxDecimalPlaces: 6 })
-  lat: string;
+  lat!: string;
 
   @ApiProperty({
     example: 60.595278,
@@ -26,7 +26,7 @@ export class LocationAddressMapDto {
     description: "Долгота",
   })
   @IsNumber({ maxDecimalPlaces: 6 })
-  lng: string;
+  lng!: string;
 }
 export class LocationAddressDto {
   @ApiProperty({
@@ -34,7 +34,7 @@ export class LocationAddressDto {
     description: "Полный адрес локации",
   })
   @IsString()
-  full_address: string;
+  full_address!: string;
 
   @ApiProperty({
     example: "ул. Вайнера",
@@ -93,7 +93,7 @@ export class LocationAddressDto {
   })
   @ValidateNested()
   @Type(() => LocationAddressMapDto)
-  map: LocationAddressMapDto;
+  map!: LocationAddressMapDto;
 }
 
 export class LocationFirstUsers {
@@ -103,21 +103,21 @@ export class LocationFirstUsers {
   })
   @IsUUID()
   @IsString()
-  id: string;
+  id!: string;
 
   @ApiProperty({
     example: "Бобо",
     description: "Имя ",
   })
   @IsString()
-  name: string;
+  name!: string;
 
   @ApiProperty({
     example: "71657a704cb3726f8f1116879bd6f908.jpg",
     description: "Аватар",
   })
   @IsString()
-  avatar: string;
+  avatar!: string;
 }
 
 export class LocationFirstDto {
@@ -127,14 +127,14 @@ export class LocationFirstDto {
   })
   @IsUUID()
   @IsString()
-  id: string;
+  id!: string;
 
   @ApiProperty({
     example: "Яндекс",
     description: "Название",
   })
   @IsString()
-  name: string;
+  name!: string;
 
   @ApiProperty({
     example: "71657a704cb3726f8f1116879bd6f908.jpg",
@@ -160,7 +160,7 @@ export class LocationFirstDto {
   })
   @IsString()
   @IsOptional()
-  description: string | null;
+  description!: string | null;
 
   @ApiProperty({
     example: "Asia/Yekaterinburg",
@@ -168,14 +168,14 @@ export class LocationFirstDto {
     description: "Часовой пояс",
   })
   @IsString()
-  timezone: string;
+  timezone!: string;
 
   @ApiProperty({
     example: 2,
     description: "Количество пользователей",
   })
   @IsNumber()
-  user_count: number;
+  user_count!: number;
 
   @ApiProperty({
     example: [
@@ -194,14 +194,15 @@ export class LocationFirstDto {
     description: "Сотрудники",
   })
   @IsArray()
-  users: LocationFirstUsers[];
+  users!: LocationFirstUsers[];
 
   @ApiProperty({
     example: "8 999 999 99 99",
     description: "Номер телефона",
   })
-  @IsPhoneNumber("RU")
-  phone: string;
+  @Transform(({ value }) => (value === "" ? undefined : value))
+  @IsPhoneNumber()
+  phone!: string;
 
   @ApiProperty({
     example: ["Категория 1", "Категория 2", "Категория 3"],
@@ -210,7 +211,7 @@ export class LocationFirstDto {
   })
   @IsArray()
   @IsString({ each: true })
-  category: string[];
+  category!: string[];
 
   @ApiProperty({
     example: ["WiFi", "Кофе", "Печеньки"],
@@ -219,7 +220,7 @@ export class LocationFirstDto {
   })
   @IsArray()
   @IsString({ each: true })
-  comfort: string[];
+  comfort!: string[];
 
   @ApiProperty({
     example: {
@@ -237,5 +238,5 @@ export class LocationFirstDto {
   })
   @ValidateNested()
   @Type(() => LocationAddressDto)
-  address: LocationAddressDto;
+  address!: LocationAddressDto;
 }

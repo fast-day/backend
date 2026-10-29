@@ -1,4 +1,5 @@
 import { ApiProperty } from "@nestjs/swagger";
+import { Transform } from "class-transformer";
 import { IsNotEmpty, IsNumber, IsPhoneNumber, IsString } from "class-validator";
 
 export class VerifyCodeDto {
@@ -6,16 +7,17 @@ export class VerifyCodeDto {
     example: "+7 (999) 999-99-99",
     description: "Номер телефона",
   })
-  @IsPhoneNumber("RU")
+  @Transform(({ value }) => (value === "" ? undefined : value))
+  @IsPhoneNumber()
   @IsNotEmpty({ message: "Обязательное поле" })
-  phone: string;
+  phone!: string;
 
   @ApiProperty({
     example: 2610,
     description: "Код (4 цифры)",
   })
   @IsNumber()
-  code: number;
+  code!: number;
 }
 
 export class VerifyCodeResponseDto {
@@ -24,12 +26,12 @@ export class VerifyCodeResponseDto {
     description: "Токен",
   })
   @IsString()
-  access_token: string;
+  access_token!: string;
 
   @ApiProperty({
     example: "9vld446ad3778c02483dsdd84riof86...",
     description: "Рефреш токен",
   })
   @IsString()
-  refresh_token: number;
+  refresh_token!: number;
 }

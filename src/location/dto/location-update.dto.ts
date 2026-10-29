@@ -1,4 +1,5 @@
 import { ApiProperty } from "@nestjs/swagger";
+import { Transform } from "class-transformer";
 import {
   IsArray,
   IsBoolean,
@@ -34,8 +35,9 @@ export class LocationUpdateDto extends UpdateAddressDto {
     required: false,
     description: "Номер телефона",
   })
-  @IsPhoneNumber("RU")
+  @Transform(({ value }) => (value === "" ? undefined : value))
   @IsOptional()
+  @IsPhoneNumber()
   phone?: string;
 
   @ApiProperty({

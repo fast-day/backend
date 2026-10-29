@@ -1,5 +1,5 @@
 import { ApiProperty } from "@nestjs/swagger";
-import { Type } from "class-transformer";
+import { Transform, Type } from "class-transformer";
 import {
   IsBoolean,
   IsEmail,
@@ -21,16 +21,17 @@ export class EmployeeDto {
   @IsString()
   @IsEmail()
   @IsNotEmpty({ message: "Обязательное поле" })
-  email: string;
+  email!: string;
 
   @ApiProperty({
     example: "+7 999 999 99 99",
     required: true,
     description: "Номер телефона",
   })
-  @IsPhoneNumber("RU")
+  @Transform(({ value }) => (value === "" ? undefined : value))
+  @IsPhoneNumber()
   @IsNotEmpty({ message: "Обязательное поле" })
-  phone: string;
+  phone!: string;
 
   @ApiProperty({
     example: "Вова",
@@ -39,7 +40,7 @@ export class EmployeeDto {
   })
   @IsString()
   @IsNotEmpty({ message: "Обязательное поле" })
-  first_name: string;
+  first_name!: string;
 
   @ApiProperty({
     example: "Пупкин",
@@ -48,7 +49,7 @@ export class EmployeeDto {
   })
   @IsString()
   @IsOptional()
-  last_name: string;
+  last_name!: string;
 
   @ApiProperty({
     example: 3,
@@ -56,7 +57,7 @@ export class EmployeeDto {
     description: "ID роли",
   })
   @IsNumber()
-  role: RoleIds;
+  role!: RoleIds;
 
   @ApiProperty({
     example: "Финансовый аналитик",
@@ -64,7 +65,7 @@ export class EmployeeDto {
     description: "Должность",
   })
   @IsString()
-  position: string;
+  position!: string;
 
   @ApiProperty({
     example: "0f626ad0-aa27-4755-8da6-5d16f474a127",
@@ -73,7 +74,7 @@ export class EmployeeDto {
   })
   @IsUUID()
   @IsString()
-  location_id: string;
+  location_id!: string;
 
   @ApiProperty({
     example: "06.09.2006",
@@ -96,7 +97,7 @@ export class EmployeeDto {
 
 class EmployeeResDetail {
   @IsString()
-  action: string;
+  action!: string;
 }
 
 export class CreateEmployeeResponse {
@@ -105,14 +106,14 @@ export class CreateEmployeeResponse {
     description: "Успешно",
   })
   @IsBoolean()
-  success: boolean;
+  success!: boolean;
 
   @ApiProperty({
     example: "Приглашене отправлено на почту",
     description: "Сообщение",
   })
   @IsString()
-  message: string;
+  message!: string;
 
   @ApiProperty({
     example: {
@@ -121,7 +122,7 @@ export class CreateEmployeeResponse {
     description: "Действие",
   })
   @Type(() => EmployeeResDetail)
-  detail: EmployeeResDetail;
+  detail!: EmployeeResDetail;
 }
 
 export class InviteEmployeeConflict {
@@ -130,19 +131,19 @@ export class InviteEmployeeConflict {
     description: "Статус",
   })
   @IsNumber()
-  status: number;
+  status!: number;
 
   @ApiProperty({
     example: "Ошибка",
     description: "Заголовок",
   })
   @IsString()
-  title: string;
+  title!: string;
 
   @ApiProperty({
     example: "Пользователь уже привязан к указанной локации.",
     description: "Детали",
   })
   @IsString()
-  detail: string;
+  detail!: string;
 }
