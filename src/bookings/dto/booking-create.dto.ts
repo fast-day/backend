@@ -12,7 +12,7 @@ import {
   ValidateNested,
 } from "class-validator";
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
-import { Type } from "class-transformer";
+import { Transform, Type } from "class-transformer";
 
 export class BookingCreateServiceUserDto {
   @ApiProperty({
@@ -134,9 +134,9 @@ export class BookingCreateCustomerDto {
     description: "Номер клиента",
     required: false,
   })
-  @ApiProperty({ example: "+7 (999) 999-99-99" })
-  @IsPhoneNumber()
+  @Transform(({ value }) => (value === "" ? undefined : value))
   @IsOptional()
+  @IsPhoneNumber()
   phone?: string;
 }
 

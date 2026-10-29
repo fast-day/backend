@@ -1,6 +1,6 @@
 import { ApiProperty } from "@nestjs/swagger/dist/decorators";
 import { ROLE, UserStatus } from "@prisma/client";
-import { Type } from "class-transformer";
+import { Transform, Type } from "class-transformer";
 import {
   IsBoolean,
   IsEmail,
@@ -18,49 +18,50 @@ class UserProfileDto {
   })
   @IsUUID()
   @IsString()
-  id: string;
+  id!: string;
 
   @ApiProperty({
     example: "example@gmail.com",
     description: "Email",
   })
   @IsEmail()
-  email: string;
+  email!: string;
 
   @ApiProperty({
     example: "Имя Фамилия",
     description: "Полное имя",
   })
   @IsString()
-  name: string;
+  name!: string;
 
   @ApiProperty({
     example: "8 999 999 99 99",
     description: "Номер телефона",
   })
-  @IsPhoneNumber("RU")
-  phone: string;
+  @Transform(({ value }) => (value === "" ? undefined : value))
+  @IsPhoneNumber()
+  phone!: string;
 
   @ApiProperty({
     example: "71657a704cb3726f8f1116879bd6f908.jpg",
     description: "Аватар",
   })
   @IsString()
-  avatar: string;
+  avatar!: string;
 
   @ApiProperty({
     example: "active",
     description: "Статус",
   })
   @IsEnum(UserStatus)
-  status: UserStatus;
+  status!: UserStatus;
 
   @ApiProperty({
     example: "Глав. Разработчик",
     description: "Позиция",
   })
   @IsString()
-  position: string;
+  position!: string;
 }
 
 export class LocationUsersDto {
@@ -70,21 +71,21 @@ export class LocationUsersDto {
   })
   @IsUUID()
   @IsString()
-  user_id: string;
+  user_id!: string;
 
   @ApiProperty({
     example: "employee",
     description: "Роль",
   })
   @IsEnum(ROLE)
-  role: ROLE;
+  role!: ROLE;
 
   @ApiProperty({
     example: false,
     description: "Заблокирован",
   })
   @IsBoolean()
-  is_banned: boolean;
+  is_banned!: boolean;
 
   @ApiProperty({
     example: {
@@ -99,5 +100,5 @@ export class LocationUsersDto {
   })
   @ValidateNested()
   @Type(() => UserProfileDto)
-  profile: UserProfileDto;
+  profile!: UserProfileDto;
 }

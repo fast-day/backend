@@ -1,4 +1,5 @@
 import { ApiProperty } from "@nestjs/swagger";
+import { Transform } from "class-transformer";
 import { IsArray, IsOptional, IsPhoneNumber, IsString } from "class-validator";
 import { CreateAddressDto } from "src/address/dto/create.dto";
 
@@ -27,7 +28,8 @@ export class LocationDto extends CreateAddressDto {
     required: true,
     description: "Номер телефона",
   })
-  @IsPhoneNumber("RU")
+  @Transform(({ value }) => (value === "" ? undefined : value))
+  @IsPhoneNumber()
   phone!: string;
 
   @ApiProperty({

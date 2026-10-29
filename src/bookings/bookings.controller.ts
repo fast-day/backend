@@ -146,11 +146,7 @@ export class BookingsController {
   @UseGuards(AuthGuard, LoadUserGuard, CompanyGuard, LocationGuard, ScopeGuard)
   @Scopes("bookings:read")
   @HttpCode(HttpStatus.OK)
-  getCalendarBooking(
-    // @Param("location_id") locationId: string,
-    @Query() query: GetCalendarBookingsDto,
-    @Req() req,
-  ) {
+  getCalendarBooking(@Query() query: GetCalendarBookingsDto, @Req() req) {
     const userId = req.user.id;
     return this.bookingsService.getCalendarBooking(userId, query);
   }

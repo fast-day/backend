@@ -1,6 +1,6 @@
 import { ApiProperty } from "@nestjs/swagger/dist/decorators";
 import { ROLE, UserStatus } from "@prisma/client";
-import { Type } from "class-transformer";
+import { Transform, Type } from "class-transformer";
 import {
   IsBoolean,
   IsEmail,
@@ -38,7 +38,8 @@ class UserProfileDto {
     example: "8 999 999 99 99",
     description: "Номер телефона",
   })
-  @IsPhoneNumber("RU")
+  @Transform(({ value }) => (value === "" ? undefined : value))
+  @IsPhoneNumber()
   phone!: string;
 
   @ApiProperty({

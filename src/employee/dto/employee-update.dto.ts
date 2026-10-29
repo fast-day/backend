@@ -1,4 +1,5 @@
 import { ApiProperty } from "@nestjs/swagger";
+import { Transform } from "class-transformer";
 import {
   IsBoolean,
   IsNotEmpty,
@@ -16,7 +17,8 @@ export class EmployeeUpdateDto {
     required: true,
     description: "Номер телефона",
   })
-  @IsPhoneNumber("RU")
+  @Transform(({ value }) => (value === "" ? undefined : value))
+  @IsPhoneNumber()
   @IsNotEmpty({ message: "Обязательное поле" })
   phone!: string;
 

@@ -1,6 +1,6 @@
 import { ApiProperty } from "@nestjs/swagger/dist/decorators";
 import { CURRENCY, ROLE } from "@prisma/client";
-import { Type } from "class-transformer";
+import { Transform, Type } from "class-transformer";
 import {
   IsEmail,
   IsEnum,
@@ -18,7 +18,7 @@ class RoleDto {
     description: "role id",
   })
   @IsNumber()
-  id: number;
+  id!: number;
 }
 
 class MeLocationsDto {
@@ -28,14 +28,14 @@ class MeLocationsDto {
   })
   @IsUUID()
   @IsString()
-  id: string;
+  id!: string;
 
   @ApiProperty({
     example: "Яндекс",
     default: "location name",
   })
   @IsString()
-  name: string;
+  name!: string;
 
   @ApiProperty({
     example: "71657a704cb3726f8f1116879bd6f908.jpg",
@@ -43,7 +43,7 @@ class MeLocationsDto {
   })
   @IsString()
   @IsOptional()
-  avatar: string | null;
+  avatar!: string | null;
 }
 
 class CompanyIndustryDto {
@@ -52,14 +52,14 @@ class CompanyIndustryDto {
     description: "industry id",
   })
   @IsNumber()
-  id: number;
+  id!: number;
 
   @ApiProperty({
     example: "IT",
     description: "industry name",
   })
   @IsString()
-  name: string;
+  name!: string;
 }
 
 class MeCompanyDto {
@@ -69,21 +69,21 @@ class MeCompanyDto {
   })
   @IsUUID()
   @IsString()
-  id: string;
+  id!: string;
 
   @ApiProperty({
     example: "Яндекс",
     default: "company name",
   })
   @IsString()
-  name: string;
+  name!: string;
 
   @ApiProperty({
     example: "RUB",
     default: "currency",
   })
   @IsEnum(CURRENCY)
-  currency: CURRENCY;
+  currency!: CURRENCY;
 
   @ApiProperty({
     example: { id: 1, name: "IT" },
@@ -91,14 +91,14 @@ class MeCompanyDto {
   })
   @ValidateNested()
   @Type(() => CompanyIndustryDto)
-  industry: CompanyIndustryDto;
+  industry!: CompanyIndustryDto;
 
   @ApiProperty({
     example: "IT",
     default: "specialization",
   })
   @IsString()
-  specialization: string;
+  specialization!: string;
 }
 
 export class MeDto {
@@ -108,27 +108,28 @@ export class MeDto {
   })
   @IsUUID()
   @IsString()
-  id: string;
+  id!: string;
 
   @ApiProperty({
     example: "example@gmail.com",
     description: "email",
   })
   @IsEmail()
-  email: string;
+  email!: string;
 
   @ApiProperty({
     example: "+7 999 999 99 99",
   })
-  @IsPhoneNumber("RU")
-  phone: string;
+  @Transform(({ value }) => (value === "" ? undefined : value))
+  @IsPhoneNumber()
+  phone!: string;
 
   @ApiProperty({
     example: "employee",
     description: "role",
   })
   @IsEnum(ROLE)
-  role: ROLE;
+  role!: ROLE;
 
   @ApiProperty({
     example: { id: 1 },
@@ -136,35 +137,35 @@ export class MeDto {
   })
   @ValidateNested()
   @Type(() => RoleDto)
-  role_id: RoleDto;
+  role_id!: RoleDto;
 
   @ApiProperty({
     example: "Имя",
     description: "first_name",
   })
   @IsString()
-  first_name: string;
+  first_name!: string;
 
   @ApiProperty({
     example: "Фамилия",
     description: "last_name",
   })
   @IsString()
-  last_name: string;
+  last_name!: string;
 
   @ApiProperty({
     example: "Имя Фамилия",
     description: "full_name",
   })
   @IsString()
-  name: string;
+  name!: string;
 
   @ApiProperty({
     example: "d01e304sc2hc4c9372849a41a182dj3f.jpeg",
     description: "avatar",
   })
   @IsString()
-  avatar: string;
+  avatar!: string;
 
   @ApiProperty({
     example: [
@@ -178,7 +179,7 @@ export class MeDto {
   })
   @ValidateNested()
   @Type(() => MeLocationsDto)
-  locations: MeLocationsDto[];
+  locations!: MeLocationsDto[];
 
   @ApiProperty({
     example: {
@@ -191,5 +192,5 @@ export class MeDto {
   })
   @ValidateNested()
   @Type(() => MeCompanyDto)
-  company: MeCompanyDto;
+  company!: MeCompanyDto;
 }

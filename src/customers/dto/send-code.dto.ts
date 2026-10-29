@@ -1,4 +1,5 @@
 import { ApiProperty } from "@nestjs/swagger";
+import { Transform } from "class-transformer";
 import { IsBoolean, IsNotEmpty, IsPhoneNumber } from "class-validator";
 
 export class SendCodeDto {
@@ -6,7 +7,8 @@ export class SendCodeDto {
     example: "+7 (999) 999-99-99",
     description: "Номер телефона",
   })
-  @IsPhoneNumber("RU")
+  @Transform(({ value }) => (value === "" ? undefined : value))
+  @IsPhoneNumber()
   @IsNotEmpty({ message: "Обязательное поле" })
   phone!: string;
 }
