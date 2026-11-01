@@ -106,7 +106,7 @@ export class BookingsPublicController {
     status: HttpStatus.NOT_FOUND,
     description: "not found",
   })
-  @Get("booking/widgets/:booking_id")
+  @Get("booking/widgets/result/:booking_id")
   @HttpCode(HttpStatus.OK)
   details(@Param("booking_id") bookingId: string) {
     return this.bookingService.details(bookingId);
