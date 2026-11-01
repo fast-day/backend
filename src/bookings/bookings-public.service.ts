@@ -13,6 +13,11 @@ import { format, fromZonedTime } from "date-fns-tz";
 import { addDays } from "date-fns/addDays";
 import { formatIntervalTime } from "src/shared/utils/format-time.util";
 import { minutesToUtcDate } from "src/directories/utils/format-minutes.util";
+import {
+  formatBookingTime,
+  formatDateInTimezone,
+} from "./utils/format-time.util";
+import { getBookingTimeRange } from "./utils/time-range.util";
 
 @Injectable()
 export class BookingsPublicService {
@@ -478,5 +483,200 @@ export class BookingsPublicService {
     };
 
     return await this.bookingService.create(createDto, company.id, "");
+  }
+
+  async details(bookingId: string) {
+    const booking = await this.prismaService.booking.findFirst({
+      where: { id: bookingId },
+      select: {
+        id: true,
+        companyId: true,
+        tag: true,
+        status: true,
+        comment: true,
+        orderId: true,
+        updatedAt: true,
+        cancelledAt: true,
+        cancelReason: true,
+        location: {
+          select: {
+            id: true,
+            name: true,
+            avatar: true,
+            address: { select: { timezone: true } },
+          },
+        },
+        customer: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            phone: true,
+            email: true,
+            birthday: true,
+            avatar: true,
+          },
+        },
+        services: {
+          select: {
+            id: true,
+            unitPrice: true,
+            startTime: true,
+            endTime: true,
+            duration: true,
+            count: true,
+            service: {
+              select: {
+                id: true,
+                name: true,
+                avatar: true,
+                mark: true,
+                category: true,
+                price: { select: { price: true, costPrice: true } },
+                duration: true,
+              },
+            },
+            employee: {
+              select: {
+                id: true,
+                firstName: true,
+                lastName: true,
+                phone: true,
+                avatar: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (!booking)
+      throw new HttpException(
+        {
+          status: HttpStatus.NOT_FOUND,
+          title: "Ошибка",
+          detail: "Бронирование не найдено.",
+          meta: { booking_id: bookingId },
+        },
+        HttpStatus.NOT_FOUND,
+      );
+
+    const companyId = booking.companyId;
+
+    const customerCompany = await this.prismaService.customerCompany.findUnique(
+      {
+        where: {
+          customerId_companyId: {
+            customerId: booking.customer.id,
+            companyId,
+          },
+        },
+        select: {
+          id: true,
+          customer: {
+            select: {
+              bookings: {
+                select: {
+                  order: {
+                    where: { status: "paid" },
+                    select: {
+                      total: true,
+                      subtotal: true,
+                    },
+                  },
+                },
+              },
+              _count: {
+                select: {
+                  bookings: { where: { companyId } },
+                },
+              },
+            },
+          },
+        },
+      },
+    );
+
+    const { start, end } = getBookingTimeRange(booking.services);
+
+    const timezone = booking.location.address?.timezone ?? DEFAULT_TIMEZONE;
+
+    const res = {
+      id: booking.id,
+      status: booking.status,
+      tag: booking.tag,
+      comment: booking.comment,
+      order_id: booking.orderId,
+      date: formatDateInTimezone(start, timezone),
+      start_time: formatBookingTime(start, timezone),
+      end_time: formatBookingTime(end, timezone),
+      cancel_reason: booking.cancelReason,
+      updated_date: formatDateInTimezone(booking.updatedAt, timezone),
+      updated_time: formatBookingTime(booking.updatedAt, timezone),
+      location: {
+        id: booking.location.id,
+        name: booking.location.name,
+        avatar: buildFileUrl(booking.location.avatar),
+      },
+      customer: {
+        id: booking.customer.id,
+        customer_attributes: {
+          profile_id: customerCompany?.id,
+          first_name: booking.customer.firstName,
+          last_name: booking.customer.lastName,
+          full_name: getFullName(
+            booking.customer.firstName,
+            booking.customer.lastName,
+          ),
+          birthday: booking.customer.birthday,
+          phone: booking.customer.phone,
+          email: booking.customer.email,
+          avatar: buildFileUrl(booking.customer.avatar),
+        },
+        visit_total: customerCompany?.customer.bookings.filter((b) => b.order)
+          .length,
+        bookings_count: customerCompany?.customer._count.bookings,
+        bookings_total: customerCompany?.customer.bookings.reduce(
+          (sum, booking) => sum + Number(booking.order?.total ?? 0),
+          0,
+        ),
+      },
+      booking_services: booking.services.map((service) => ({
+        booking_service_id: service.id,
+        booking_service_start_time: formatBookingTime(
+          service.startTime,
+          timezone,
+        ),
+        booking_service_end_time: formatBookingTime(service.endTime, timezone),
+        booking_service_duration: service.duration,
+        booking_service_price: service.unitPrice,
+        booking_service_count: service.count,
+        service: {
+          service_id: service.service.id,
+          name: service.service.name,
+          mark: service.service.mark,
+          duration: service.service.duration,
+          avatar: buildFileUrl(service.service.avatar),
+          category: service.service.category,
+          prices: {
+            price: service.service.price?.price,
+            cost_price: service.service.price?.costPrice,
+          },
+        },
+        user: {
+          user_id: service.employee.id,
+          first_name: service.employee.firstName,
+          last_name: service.employee.lastName,
+          full_name: getFullName(
+            service.employee.firstName,
+            service.employee.lastName,
+          ),
+          phone: service.employee.phone,
+          avatar: buildFileUrl(service.employee.avatar),
+        },
+      })),
+    };
+
+    return res;
   }
 }
