@@ -1,14 +1,4 @@
 services:
-  #nginx-crm:
-    #build: ./nginx
-    #restart: always
-    #ports:
-      #- "3000:80"
-    #depends_on:
-      #- crm
-    #networks:
-      #- crm-net
-
   crm:
     container_name: crm
     image: xaletch/diplome-app-crm:latest

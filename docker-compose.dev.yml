@@ -73,6 +73,7 @@ services:
       mc anonymous set public minio/service-avatars;
       mc anonymous set public minio/company-avatars;
       mc anonymous set public minio/qrcode;
+      mc anonymous set public minio/site-documents;
       tail -f /dev/null
       "
     restart: on-failure

@@ -8,10 +8,19 @@ import {
   Post,
   Query,
 } from "@nestjs/common";
-import { ApiBody, ApiOperation, ApiResponse, ApiTags } from "@nestjs/swagger";
+import {
+  ApiBody,
+  ApiOperation,
+  ApiParam,
+  ApiResponse,
+  ApiTags,
+} from "@nestjs/swagger";
 import { BookingsPublicService } from "./bookings-public.service";
 import { GetPublicBookingDto } from "./dto/public/employee-query.dto";
-import { CreateBookingResponseDto } from "./dto/booking-response.dto";
+import {
+  BookingResponseDto,
+  CreateBookingResponseDto,
+} from "./dto/booking-response.dto";
 import { WidgetBookingCreateDto } from "./dto/public/booking-create.dto";
 import { GetSlotsDto } from "./dto/public/slot-query.dto";
 
@@ -78,5 +87,28 @@ export class BookingsPublicController {
     @Body() dto: WidgetBookingCreateDto,
   ) {
     return this.bookingService.createBooking(dto, publicName);
+  }
+
+  @ApiOperation({
+    summary: "Получение детальной информации о бронировании",
+  })
+  @ApiParam({
+    name: "booking_id",
+    example: "a81b90e4-5a76-4870-84be-c9732b9b22c1",
+    description: "ID бронирования",
+  })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: "Детальная информация",
+    type: BookingResponseDto,
+  })
+  @ApiResponse({
+    status: HttpStatus.NOT_FOUND,
+    description: "not found",
+  })
+  @Get("booking/widgets/result/:booking_id")
+  @HttpCode(HttpStatus.OK)
+  details(@Param("booking_id") bookingId: string) {
+    return this.bookingService.details(bookingId);
   }
 }
