@@ -67,8 +67,6 @@ export class BookingsPublicService {
       select: { id: true },
     });
 
-    console.log(locationId, user);
-
     if (!user)
       throw new HttpException(
         {
@@ -470,9 +468,19 @@ export class BookingsPublicService {
     ]);
 
     await this.prismaService.customerCompany.upsert({
-      where: { customerId_companyId: { companyId: company.id, customerId } },
+      where: {
+        customerId_companyId: {
+          companyId: company.id,
+          customerId,
+        },
+      },
       update: {},
       create: { companyId: company.id, customerId },
+    });
+
+    await this.prismaService.company.update({
+      where: { id: company.id },
+      data: { hasCustomers: true },
     });
 
     const createDto: BookingCreateDto = {
@@ -482,7 +490,7 @@ export class BookingsPublicService {
       comment: dto.comment,
     };
 
-    return await this.bookingService.create(createDto, company.id, "");
+    return await this.bookingService.create(createDto, company.id);
   }
 
   async details(bookingId: string) {

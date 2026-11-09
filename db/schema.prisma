@@ -599,7 +599,7 @@ model Customer {
 
   firstName     String?       @map("first_name")
   lastName      String?       @map("last_name")
-  email         String?       @unique
+  email         String?
   phone         String        @unique
   phoneNormalized String?     @map("phone_normalized")
   birthday      String?
@@ -612,6 +612,7 @@ model Customer {
   createdAt     DateTime      @default(now())   @map("created_at")
   updatedAt     DateTime      @updatedAt        @map("updated_at")
 
+  @@index([email])
   @@map("customers")
 }
 
