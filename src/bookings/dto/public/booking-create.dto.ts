@@ -37,6 +37,5 @@ export class WidgetBookingCreateDto extends WidgetBookingDto {
     required: true,
   })
   @IsEmail()
-  @IsOptional()
-  email?: string;
+  email!: string;
 }

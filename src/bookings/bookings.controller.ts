@@ -3,6 +3,7 @@ import {
   Controller,
   Delete,
   Get,
+  Header,
   HttpCode,
   HttpStatus,
   Param,
@@ -43,6 +44,7 @@ import { UnAuthorizedDto } from "src/shared/dto/errors.dto";
 import { GetBookingsDto, GetCalendarBookingsDto } from "./dto/get-bookings.dto";
 import { BookingCustomerResponseDto } from "./dto/booking-customer-response.dto";
 import { GetCustomerBookingsDto } from "./dto/get-customer-bookings.dto";
+import { buildIcs } from "src/shared/utils/build-links.util";
 
 @ApiTags("Бронирование")
 @Controller()
@@ -74,8 +76,7 @@ export class BookingsController {
   @HttpCode(HttpStatus.CREATED)
   create(@Body() dto: BookingCreateDto, @Req() req) {
     const companyId = req.user.companyId;
-    const userEmail = req.user.email;
-    return this.bookingsService.create(dto, companyId, userEmail);
+    return this.bookingsService.create(dto, companyId);
   }
 
   @ApiBearerAuth()
@@ -357,6 +358,14 @@ export class BookingsController {
   // @Scopes("bookings-client-me:read")
   getMyBookings(@AuthorizedCustomer() customer: ICustomer) {
     return this.bookingsService.getMeBookings(customer.id);
+  }
+
+  @Get(":id/calendar.ics")
+  @Header("Content-Type", "text/calendar; charset=utf-8")
+  @Header("Content-Disposition", 'attachment; filename="booking.ics"')
+  async ics(@Param("id") id: string) {
+    const event = await this.bookingsService.getForCalendar(id);
+    return buildIcs(event);
   }
 
   // /*

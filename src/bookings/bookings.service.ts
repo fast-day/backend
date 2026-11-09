@@ -1,4 +1,4 @@
-import { HttpException, HttpStatus, Injectable } from "@nestjs/common";
+import { HttpException, HttpStatus, Injectable, Logger } from "@nestjs/common";
 import { PrismaService } from "src/prisma/prisma.service";
 import { BookingCreateDto } from "./dto/booking-create.dto";
 import { BookingStatusDto } from "./dto/booking-status.dto";
@@ -30,6 +30,7 @@ import { UpdateBookingServicesDto } from "./dto/booking-update-service.dto";
 import { BookingValidationService } from "./validation/booking-validation.service";
 import { formatIntervalTime } from "src/shared/utils/format-time.util";
 import { MailService } from "src/mail/mail.service";
+import { buildCalendarLinks } from "src/shared/utils/build-links.util";
 
 @Injectable()
 export class BookingsService {
@@ -39,7 +40,9 @@ export class BookingsService {
     private readonly mailService: MailService,
   ) {}
 
-  async create(dto: BookingCreateDto, company_id: string, userEmail: string) {
+  private readonly logger = new Logger(BookingsService.name);
+
+  async create(dto: BookingCreateDto, company_id: string) {
     const timezone = await this.validationService.getLocationTimezone(
       dto.location_id,
     );
@@ -89,10 +92,11 @@ export class BookingsService {
       );
       await this.validationService.validateService(dto.services, company_id);
 
-      const customerId = await this.validationService.validateCustomer(
-        dto.customers[0].id,
-        company_id,
-      );
+      const { id: customerId, email: customerEmail } =
+        await this.validationService.validateCustomer(
+          dto.customers[0].id,
+          company_id,
+        );
 
       for (const service of resolvedServices) {
         const userLocation = await t.userLocation.findFirst({
@@ -178,6 +182,7 @@ export class BookingsService {
               employee: {
                 select: {
                   id: true,
+                  email: true,
                   firstName: true,
                   lastName: true,
                   phone: true,
@@ -196,7 +201,14 @@ export class BookingsService {
 
       const { start, end } = getBookingTimeRange(booking.services);
 
-      void this.mailService.sendNewBookingNotify(userEmail, {
+      const calendar = buildCalendarLinks({
+        id: booking.id,
+        title: booking.services.map((s) => s.service.name).join(", "),
+        start,
+        end,
+      });
+
+      const payload = {
         id: booking.id,
         status: booking.status,
         tag: booking.tag,
@@ -204,6 +216,7 @@ export class BookingsService {
         start_time: formatBookingTime(start, timezone),
         end_time: formatBookingTime(end, timezone),
         date: formatDateInTimezone(start, timezone),
+        calendar,
         customer: {
           id: booking.customer.id,
           phone: booking.customer.phone,
@@ -239,6 +252,25 @@ export class BookingsService {
             },
           },
         })),
+      };
+
+      const employeeEmails = [
+        ...new Set(
+          booking.services.map((s) => s.employee.email).filter(Boolean),
+        ),
+      ] as string[];
+
+      void Promise.allSettled([
+        ...employeeEmails.map((email) =>
+          this.mailService.systemSendNewBookingNotify(email, payload),
+        ),
+        this.mailService.sendCustomerNewBookingNotify(customerEmail, payload),
+      ]).then((res) => {
+        res.forEach((r) => {
+          if (r.status === "rejected") {
+            this.logger.error("Booking email notify failed", r.reason);
+          }
+        });
       });
 
       const res = {
@@ -300,6 +332,43 @@ export class BookingsService {
       };
       return res;
     });
+  }
+
+  async getForCalendar(id: string) {
+    const booking = await this.prismaService.booking.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        location: { select: { name: true } },
+        services: {
+          select: {
+            startTime: true,
+            endTime: true,
+            service: { select: { name: true } },
+          },
+        },
+      },
+    });
+
+    if (!booking)
+      throw new HttpException(
+        {
+          status: HttpStatus.NOT_FOUND,
+          title: "Запись не найдена",
+          detail: "Не удалось найти запись",
+          meta: { booking_id: id },
+        },
+        HttpStatus.NOT_FOUND,
+      );
+
+    const { start, end } = getBookingTimeRange(booking.services);
+    return {
+      id: booking.id,
+      title: booking.services.map((s) => s.service.name).join(", "),
+      start,
+      end,
+      location: booking.location.name,
+    };
   }
 
   public async updateServiceCount(

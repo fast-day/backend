@@ -164,10 +164,13 @@ export class BookingValidationService {
     }
   }
 
-  async validateCustomer(id: string, companyId: string): Promise<string> {
+  async validateCustomer(
+    id: string,
+    companyId: string,
+  ): Promise<{ id: string; email: string | null }> {
     const customer = await this.prismaService.customer.findUnique({
       where: { id },
-      select: { id: true },
+      select: { id: true, email: true },
     });
 
     if (!customer)
@@ -192,7 +195,7 @@ export class BookingValidationService {
       });
     }
 
-    return customer.id;
+    return { id: customer.id, email: customer.email };
   }
 
   async validateEmployeeWorked(

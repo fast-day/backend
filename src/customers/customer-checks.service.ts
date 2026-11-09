@@ -29,8 +29,9 @@ export class CustomerChecksService {
     email?: string,
   ): Promise<string> {
     try {
-      const customer = await this.prisma.customer.findUnique({
-        where: { phone },
+      const phoneNormalized = normalizePhone(phone);
+      const customer = await this.prisma.customer.findFirst({
+        where: { phoneNormalized },
         select: { id: true },
       });
 
@@ -67,7 +68,7 @@ export class CustomerChecksService {
           select: { id: true },
         });
 
-        return customer!.id;
+        return customer?.id ?? "";
       }
       throw err;
     }

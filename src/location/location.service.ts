@@ -130,6 +130,7 @@ export class LocationService {
       },
       select: {
         id: true,
+        publicCode: true,
         name: true,
         avatar: true,
       },

@@ -158,7 +158,17 @@ export class CompanyService {
         company.users[0].lastName,
       ),
       avatar: buildFileUrl(company.users[0].avatar),
-      locations: [company.location],
+      locations: [
+        {
+          uuid: company.location.id,
+          id: company.location.publicCode,
+          name: company.location.name,
+          avatar: buildFileUrl(company.location.avatar),
+          timezone: {
+            timezone: company.location.address?.timezone,
+          },
+        },
+      ],
       company: {
         id: company.id,
         name: company.name,
