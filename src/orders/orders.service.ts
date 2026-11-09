@@ -31,6 +31,81 @@ export class OrdersService {
     private readonly bookingService: BookingsService,
   ) {}
 
+  private PAYMENT_LABELS: Record<string, string> = {
+    online: "Онлайн",
+    cash: "Наличные",
+    credit_card: "Банковская карта",
+    transfer: "Перевод",
+    sbp: "СБП",
+  };
+
+  private async buildPdfParams(
+    t: Prisma.TransactionClient,
+    orderId: string,
+    p: {
+      tag: string;
+      kind: "paid" | "refund";
+      date: Date;
+      paymentMethod: string | null;
+      discount: number | null;
+      basedOn?: string;
+    },
+  ) {
+    const details = await t.order.findUniqueOrThrow({
+      where: { id: orderId },
+      select: {
+        company: { select: { name: true } },
+        bookings: {
+          select: {
+            customer: {
+              select: {
+                firstName: true,
+                lastName: true,
+                phone: true,
+                email: true,
+              },
+            },
+            services: {
+              select: {
+                count: true,
+                unitPrice: true,
+                service: { select: { name: true } },
+              },
+            },
+          },
+        },
+      },
+    });
+
+    const customer = details.bookings[0]?.customer;
+
+    return {
+      tag: p.tag,
+      kind: p.kind,
+      basedOn: p.basedOn,
+      date: p.date,
+      seller: {
+        name: details.company.name,
+      },
+      buyer: customer && {
+        name: getFullName(customer.firstName, customer.lastName),
+        phone: customer.phone,
+        email: customer.email ?? undefined,
+      },
+      items: details.bookings.flatMap((b) =>
+        b.services.map((s) => ({
+          name: s.service.name,
+          qty: s.count,
+          price: s.unitPrice,
+        })),
+      ),
+      discount: p.discount ?? 0,
+      paymentMethod: p.paymentMethod
+        ? (this.PAYMENT_LABELS[p.paymentMethod] ?? p.paymentMethod)
+        : "Не указан",
+    };
+  }
+
   private async findById(orderId: string, companyId: string) {
     const order = await this.prismaService.order.findFirst({
       where: { id: orderId, companyId },
@@ -479,10 +554,16 @@ export class OrdersService {
       });
 
       const amount = updOrder.total - (updOrder.discount ?? 0);
-
       const invoiceSequence = await getNextSequence(t, companyId, "invoice");
-
       const invoiceTag = generateTag("CN", invoiceSequence);
+
+      const pdfParams = await this.buildPdfParams(t, orderId, {
+        tag: invoiceTag,
+        kind: "paid",
+        date: new Date(),
+        paymentMethod: updOrder.paymentMethod,
+        discount: updOrder.discount,
+      });
 
       const invoiceId = await this.invoiceService.createInvoiceWithPdf(t, {
         orderId,
@@ -497,7 +578,7 @@ export class OrdersService {
           discount: updOrder.discount,
           tag: updOrder.tag,
         },
-        pdfParams: { tag: invoiceTag },
+        pdfParams,
       });
 
       const transactionSequence = await getNextSequence(
@@ -572,7 +653,7 @@ export class OrdersService {
 
       const chargeInvoice = await t.invoice.findFirst({
         where: { orderId, type: "paid", status: "success" },
-        select: { amount: true },
+        select: { amount: true, tag: true },
       });
 
       if (!chargeInvoice) {
@@ -591,6 +672,14 @@ export class OrdersService {
 
       const invoiceTag = generateTag("CN", invoiceSequence);
 
+      const pdfParams = await this.buildPdfParams(t, orderId, {
+        tag: invoiceTag,
+        kind: "refund",
+        date: new Date(),
+        paymentMethod: updOrder.paymentMethod,
+        discount: updOrder.discount,
+      });
+
       const invoiceId = await this.invoiceService.createInvoiceWithPdf(t, {
         orderId,
         companyId,
@@ -604,7 +693,7 @@ export class OrdersService {
           discount: updOrder.discount,
           tag: updOrder.tag,
         },
-        pdfParams: { tag: invoiceTag },
+        pdfParams,
       });
 
       const transactionSequence = await getNextSequence(

@@ -69,6 +69,8 @@ enum PaymentType {
   online
   cash
   credit_card
+  sbp
+  transfer
 }
 
 enum UserStatus {
