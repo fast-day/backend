@@ -5,4 +5,5 @@ export const BUCKETS = {
   serviceAvatars: "service-avatars",
   qrcode: "qrcode",
   siteDocuments: "site-documents",
+  invoices: "invoices",
 } as const;
