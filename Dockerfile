@@ -5,7 +5,7 @@ WORKDIR /app
 COPY package*.json yarn.lock ./
 
 RUN --mount=type=cache,target=/usr/local/share/.cache/yarn \
-    yarn install --frozen-lockfile
+    yarn install --immutable
 
 COPY . .
 
@@ -18,7 +18,7 @@ WORKDIR /app
 
 COPY package*.json yarn.lock ./
 RUN --mount=type=cache,target=/usr/local/share/.cache/yarn \
-    yarn install --frozen-lockfile --production
+    yarn install --immutable --production
 RUN yarn prisma generate --schema=./db/schema.prisma
 
 FROM node:24-alpine AS production
