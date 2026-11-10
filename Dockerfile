@@ -4,6 +4,8 @@ WORKDIR /app
 
 RUN corepack enable
 
+RUN apk add --no-cache openssl && corepack enable
+
 COPY package.json yarn.lock .yarnrc.yml ./
 
 RUN --mount=type=cache,target=/root/.yarn/berry/cache \
