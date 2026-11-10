@@ -4,9 +4,9 @@ WORKDIR /app
 
 RUN corepack enable
 
-COPY package*.json yarn.lock ./
+COPY package.json yarn.lock .yarnrc.yml ./
 
-RUN --mount=type=cache,target=/app/.yarn/cache \
+RUN --mount=type=cache,target=/root/.yarn/berry/cache \
     yarn install --immutable
 
 COPY . .
