@@ -2,10 +2,12 @@ FROM node:24-alpine AS build
 
 WORKDIR /app
 
+RUN corepack enable
+
 COPY package*.json yarn.lock ./
 
 RUN --mount=type=cache,target=/app/.yarn/cache \
-    corepack yarn install --immutable
+    yarn install --immutable
 
 COPY . .
 
@@ -16,9 +18,13 @@ FROM node:24-alpine AS deps
 
 WORKDIR /app
 
-COPY package*.json yarn.lock ./
-RUN --mount=type=cache,target=/app/.yarn/cache \
-    corepack yarn install --immutable --production
+RUN apk add --no-cache openssl && corepack enable
+
+COPY package.json yarn.lock .yarnrc.yml ./
+COPY db ./db
+
+RUN --mount=type=cache,target=/root/.yarn/berry/cache \
+    yarn workspaces focus --production
 RUN yarn prisma generate --schema=./db/schema.prisma
 
 FROM node:24-alpine AS production
@@ -38,4 +44,4 @@ COPY --from=build /app/assets/fonts ./assets/fonts
 USER node
 EXPOSE 8080
 
-CMD ["sh", "-c", "yarn db:migrate:deploy && exec node dist/main.js"]
+CMD ["sh", "-c", "node_modules/.bin/prisma migrate deploy --schema=./db/schema.prisma && exec node dist/main.js"]
