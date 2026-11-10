@@ -4,8 +4,8 @@ WORKDIR /app
 
 COPY package*.json yarn.lock ./
 
-RUN --mount=type=cache,target=/usr/local/share/.cache/yarn \
-    yarn install --immutable
+RUN --mount=type=cache,target=/app/.yarn/cache \
+    corepack yarn install --immutable
 
 COPY . .
 
@@ -17,8 +17,8 @@ FROM node:24-alpine AS deps
 WORKDIR /app
 
 COPY package*.json yarn.lock ./
-RUN --mount=type=cache,target=/usr/local/share/.cache/yarn \
-    yarn install --immutable --production
+RUN --mount=type=cache,target=/app/.yarn/cache \
+    corepack yarn install --immutable --production
 RUN yarn prisma generate --schema=./db/schema.prisma
 
 FROM node:24-alpine AS production
