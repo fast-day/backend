@@ -9,7 +9,7 @@ import { ServiceUpdateDto } from "./dto/service-update.dto";
 import { slugify } from "transliteration";
 import { BufferedFile } from "src/minio/file.model";
 import { MinioService } from "src/minio/minio.service";
-import { buildFileUrl } from "src/shared/utils/build-url";
+import { buildImageUrls } from "src/shared/utils/build-url";
 import { GetServicesDto } from "./dto/get-services.dto";
 import { Prisma } from "@prisma/client";
 import {
@@ -97,7 +97,7 @@ export class ServicesService {
         duration: s.duration,
         category: s.category,
         public_name: s.publicName,
-        avatar: buildFileUrl(s.avatar),
+        avatar: buildImageUrls(s.avatar, "service-avatars"),
         price: s.price!.price ?? null,
         mark: s.mark,
         type: s.type,
@@ -182,7 +182,7 @@ export class ServicesService {
       public_name: s.publicName,
       category: s.category,
       mark: s.mark,
-      avatar: buildFileUrl(s.avatar),
+      avatar: buildImageUrls(s.avatar, "service-avatars"),
       price: s.price!.price ?? null,
       prices: {
         price: s.price?.price ?? null,
@@ -199,12 +199,12 @@ export class ServicesService {
         : null,
       users: s.users.map((u) => ({
         id: u.user.id,
-        avatar: buildFileUrl(u.user.avatar),
+        avatar: buildImageUrls(u.user.avatar, "user-avatars"),
         name: `${u.user.firstName} ${u.user.lastName}`,
       })),
       locations: s.locations.map((l) => ({
         id: l.location.id,
-        avatar: buildFileUrl(l.location.avatar),
+        avatar: buildImageUrls(l.location.avatar, "location-avatars"),
         name: l.location.name,
       })),
     };
@@ -428,7 +428,7 @@ export class ServicesService {
       duration: newService.duration,
       public_name: newService.publicName,
       category: newService.category,
-      avatar: buildFileUrl(newService.avatar),
+      avatar: buildImageUrls(newService.avatar, "service-avatars"),
       mark: newService.mark,
       price: newService.price!.price ?? null,
       prices: {
@@ -862,12 +862,10 @@ export class ServicesService {
       avatar || undefined,
     );
 
-    const key = `service-avatars/${upload}`;
-
     await this.prismaService.service.update({
       where: { id: serviceId },
-      data: { avatar: key },
+      data: { avatar: upload },
     });
-    return { success: true, avatar: buildFileUrl(key) };
+    return { success: true, avatar: buildImageUrls(upload, "service-avatars") };
   }
 }

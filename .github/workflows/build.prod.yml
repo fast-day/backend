@@ -80,8 +80,8 @@ jobs:
 
             echo ${{ secrets.DOCKER_PASSWORD }} | docker login -u ${{ vars.REP_OWNER }} --password-stdin
 
-            docker compose -f docker-compose.prod.yaml pull backend
-            docker compose -f docker-compose.prod.yaml stop backend
-            docker compose -f docker-compose.prod.yaml rm -f backend
-            docker compose -f docker-compose.prod.yaml up -d
+            docker compose -f docker-compose.prod.yml pull backend
+            docker compose -f docker-compose.prod.yml stop backend
+            docker compose -f docker-compose.prod.yml rm -f backend
+            docker compose -f docker-compose.prod.yml up -d
             docker image prune -f

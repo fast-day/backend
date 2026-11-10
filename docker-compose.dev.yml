@@ -50,33 +50,6 @@ services:
       timeout: 5s
       retries: 5
       start_period: 15s
-  
-  minio-init:
-    image: minio/mc:latest
-    networks:
-      - backend
-    depends_on:
-      minio:
-        condition: service_healthy
-    environment:
-      - MINIO_USER=${MINIO_USER}
-      - MINIO_PASSWORD=${MINIO_PASSWORD}
-    entrypoint: /bin/sh
-    command: >
-      -c "
-      mc alias set minio http://minio:9000 $${MINIO_USER} $${MINIO_PASSWORD};
-      mc mb --ignore-existing minio/user-avatars;
-      mc mb --ignore-existing minio/service-avatars;
-      mc mb --ignore-existing minio/company-avatars;
-      mc mb --ignore-existing minio/qrcode;
-      mc anonymous set public minio/user-avatars;
-      mc anonymous set public minio/service-avatars;
-      mc anonymous set public minio/company-avatars;
-      mc anonymous set public minio/qrcode;
-      mc anonymous set public minio/site-documents;
-      tail -f /dev/null
-      "
-    restart: on-failure
 
 networks:
   backend:

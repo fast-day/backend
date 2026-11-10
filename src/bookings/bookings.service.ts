@@ -3,7 +3,7 @@ import { PrismaService } from "src/prisma/prisma.service";
 import { BookingCreateDto } from "./dto/booking-create.dto";
 import { BookingStatusDto } from "./dto/booking-status.dto";
 import { Prisma } from "@prisma/client";
-import { buildFileUrl } from "src/shared/utils/build-url";
+import { buildImageUrls } from "src/shared/utils/build-url";
 import { generateBookingTag } from "./utils/generate-tag";
 import {
   buildPaginatedResponse,
@@ -226,7 +226,7 @@ export class BookingsService {
           ),
           first_name: booking.customer.firstName,
           last_name: booking.customer.lastName,
-          avatar: buildFileUrl(booking.customer.avatar),
+          avatar: buildImageUrls(booking.customer.avatar, "customer-avatars"),
         },
         services: booking.services.map((service) => ({
           booking_service_id: service.id,
@@ -245,7 +245,7 @@ export class BookingsService {
             service_id: service.service.id,
             name: service.service.name,
             duration: service.service.duration,
-            avatar: buildFileUrl(service.service.avatar),
+            avatar: buildImageUrls(service.service.avatar, "service-avatars"),
             prices: {
               price: service.service.price?.price,
               cost_price: service.service.price?.costPrice,
@@ -290,7 +290,7 @@ export class BookingsService {
           ),
           first_name: booking.customer.firstName,
           last_name: booking.customer.lastName,
-          avatar: buildFileUrl(booking.customer.avatar),
+          avatar: buildImageUrls(booking.customer.avatar, "customer-avatars"),
         },
         booking_services: booking.services.map((service) => ({
           booking_service_id: service.id,
@@ -310,7 +310,7 @@ export class BookingsService {
             name: service.service.name,
             mark: service.service.mark,
             duration: service.service.duration,
-            avatar: buildFileUrl(service.service.avatar),
+            avatar: buildImageUrls(service.service.avatar, "service-avatars"),
             category: service.service.category,
             prices: {
               price: service.service.price?.price,
@@ -326,7 +326,7 @@ export class BookingsService {
               service.employee.lastName,
             ),
             phone: service.employee.phone,
-            avatar: buildFileUrl(service.employee.avatar),
+            avatar: buildImageUrls(service.employee.avatar, "user-avatars"),
           },
         })),
       };
@@ -572,7 +572,7 @@ export class BookingsService {
             ),
             first_name: booking.customer.firstName,
             last_name: booking.customer.lastName,
-            avatar: buildFileUrl(booking.customer.avatar),
+            avatar: buildImageUrls(booking.customer.avatar, "customer-avatars"),
           },
 
           booking_services: booking.services.map((service) => ({
@@ -593,7 +593,7 @@ export class BookingsService {
               name: service.service.name,
               mark: service.service.mark,
               duration: service.service.duration,
-              avatar: buildFileUrl(service.service.avatar),
+              avatar: buildImageUrls(service.service.avatar, "service-avatars"),
               category: service.service.category,
               prices: {
                 price: service.service.price?.price,
@@ -609,7 +609,7 @@ export class BookingsService {
                 service.employee.lastName,
               ),
               phone: service.employee.phone,
-              avatar: buildFileUrl(service.employee.avatar),
+              avatar: buildImageUrls(service.employee.avatar, "user-avatars"),
             },
           })),
         };
@@ -757,7 +757,7 @@ export class BookingsService {
           ),
           first_name: booking.customer.firstName,
           last_name: booking.customer.lastName,
-          avatar: buildFileUrl(booking.customer.avatar),
+          avatar: buildImageUrls(booking.customer.avatar, "customer-avatars"),
         },
 
         booking_services: booking.services.map((service) => ({
@@ -778,7 +778,7 @@ export class BookingsService {
             name: service.service.name,
             mark: service.service.mark,
             duration: service.service.duration,
-            avatar: buildFileUrl(service.service.avatar),
+            avatar: buildImageUrls(service.service.avatar, "service-avatars"),
             category: service.service.category,
             prices: {
               price: service.service.price?.price,
@@ -794,7 +794,7 @@ export class BookingsService {
               service.employee.lastName,
             ),
             phone: service.employee.phone,
-            avatar: buildFileUrl(service.employee.avatar),
+            avatar: buildImageUrls(service.employee.avatar, "user-avatars"),
           },
         })),
       };
@@ -1036,7 +1036,7 @@ export class BookingsService {
       location: {
         id: booking.location.id,
         name: booking.location.name,
-        avatar: buildFileUrl(booking.location.avatar),
+        avatar: buildImageUrls(booking.location.avatar, "location-avatars"),
       },
       customer: {
         id: booking.customer.id,
@@ -1051,7 +1051,7 @@ export class BookingsService {
           birthday: booking.customer.birthday,
           phone: booking.customer.phone,
           email: booking.customer.email,
-          avatar: buildFileUrl(booking.customer.avatar),
+          avatar: buildImageUrls(booking.customer.avatar, "customer-avatars"),
         },
         visit_total: customerCompany?.customer.bookings.filter((b) => b.order)
           .length,
@@ -1076,7 +1076,7 @@ export class BookingsService {
           name: service.service.name,
           mark: service.service.mark,
           duration: service.service.duration,
-          avatar: buildFileUrl(service.service.avatar),
+          avatar: buildImageUrls(service.service.avatar, "service-avatars"),
           category: service.service.category,
           prices: {
             price: service.service.price?.price,
@@ -1092,7 +1092,7 @@ export class BookingsService {
             service.employee.lastName,
           ),
           phone: service.employee.phone,
-          avatar: buildFileUrl(service.employee.avatar),
+          avatar: buildImageUrls(service.employee.avatar, "user-avatars"),
         },
       })),
       invoice: {
@@ -1263,7 +1263,7 @@ export class BookingsService {
         location: {
           id: booking.location.id,
           name: booking.location.name,
-          avatar: buildFileUrl(booking.location.avatar),
+          avatar: buildImageUrls(booking.location.avatar, "location-avatars"),
           address: booking.location.address,
         },
         booking_services: booking.services.map((service) => ({
@@ -1284,7 +1284,7 @@ export class BookingsService {
             name: service.service.name,
             mark: service.service.mark,
             duration: service.service.duration,
-            avatar: buildFileUrl(service.service.avatar),
+            avatar: buildImageUrls(service.service.avatar, "service-avatars"),
             category: service.service.category,
             prices: {
               price: service.service.price?.price,
@@ -1300,7 +1300,7 @@ export class BookingsService {
               service.employee.lastName,
             ),
             phone: service.employee.phone,
-            avatar: buildFileUrl(service.employee.avatar),
+            avatar: buildImageUrls(service.employee.avatar, "user-avatars"),
           },
         })),
         order: booking.order

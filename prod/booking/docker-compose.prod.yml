@@ -1,16 +1,12 @@
+# booking
 services:
   booking:
     container_name: booking
-    image: xaletch/diplome-app-booking:latest
-    platform: linux/amd64
-#    restart: always
-    environment:
-      - NODE_ENV=production
-      - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
+    image: xaletch/fastday-booking:latest
+    restart: unless-stopped
     networks:
       - shared
 
 networks:
   shared:
     external: true
-

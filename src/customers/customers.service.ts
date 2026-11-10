@@ -1,7 +1,7 @@
 import { HttpException, HttpStatus, Injectable } from "@nestjs/common";
 import { PrismaService } from "src/prisma/prisma.service";
 import { CustomerCompanyDto } from "./dto/customer-company.dto";
-import { buildFileUrl } from "src/shared/utils/build-url";
+import { buildImageUrls } from "src/shared/utils/build-url";
 import {
   buildPaginatedResponse,
   getPaginationParams,
@@ -101,7 +101,7 @@ export class CustomersService {
       first_name: create.firstName ?? create.customer.firstName,
       last_name: create.lastName ?? create.customer.lastName,
       phone: create.customer.phone,
-      avatar: buildFileUrl(create.customer.avatar),
+      avatar: buildImageUrls(create.customer.avatar, "customer-avatars"),
       birthday: create.customer.birthday,
     };
   }
@@ -191,7 +191,7 @@ export class CustomersService {
         first_name: customer.firstName ?? customer.customer.firstName,
         last_name: customer.lastName ?? customer.customer.lastName,
         phone: customer.customer.phone,
-        avatar: buildFileUrl(customer.customer.avatar),
+        avatar: buildImageUrls(customer.customer.avatar, "customer-avatars"),
         birthday: customer.customer.birthday,
       };
     });
@@ -277,7 +277,7 @@ export class CustomersService {
         phone: customer.customer.phone,
         email: customer.customer.email,
         birthday: customer.customer.birthday,
-        avatar: buildFileUrl(customer.customer.avatar),
+        avatar: buildImageUrls(customer.customer.avatar, "customer-avatars"),
       },
     };
   }
@@ -429,7 +429,7 @@ export class CustomersService {
             name: service.service.name,
             mark: service.service.mark,
             duration: service.service.duration,
-            avatar: buildFileUrl(service.service.avatar),
+            avatar: buildImageUrls(service.service.avatar, "service-avatars"),
             category: service.service.category,
             prices: {
               price: service.service.price?.price,
@@ -445,7 +445,7 @@ export class CustomersService {
               service.employee.lastName,
             ),
             phone: service.employee.phone,
-            avatar: buildFileUrl(service.employee.avatar),
+            avatar: buildImageUrls(service.employee.avatar, "user-avatars"),
           },
         })),
       };
@@ -496,7 +496,10 @@ export class CustomersService {
               },
             )
           : null,
-        avatar: buildFileUrl(customer?.customer.avatar ?? null),
+        avatar: buildImageUrls(
+          customer?.customer.avatar ?? null,
+          "customer-avatars",
+        ),
         phone: customer?.customer.phone ?? null,
       },
     };
@@ -559,7 +562,7 @@ export class CustomersService {
       first_name: create.firstName ?? create.customer.firstName,
       last_name: create.lastName ?? create.customer.lastName,
       phone: create.customer.phone,
-      avatar: buildFileUrl(create.customer.avatar),
+      avatar: buildImageUrls(create.customer.avatar, "customer-avatars"),
       birthday: create.customer.birthday,
     };
   }

@@ -12,7 +12,7 @@ import { IUser, UserPrivate } from "./types/user.type";
 import { UserStatus } from "@prisma/client";
 import { BufferedFile } from "src/minio/file.model";
 import { MinioService } from "src/minio/minio.service";
-import { buildFileUrl } from "src/shared/utils/build-url";
+import { buildFileUrl, buildImageUrls } from "src/shared/utils/build-url";
 import { ChangePasswordDto } from "./dto/change-password.dto";
 import { normalizePhone } from "src/shared/utils/phone";
 import { getFullName } from "src/shared/utils/get-full-name.util";
@@ -121,7 +121,7 @@ export class UserService {
       ? {
           id: user.company?.id,
           name: user.company?.name,
-          logo: buildFileUrl(user.company.logo),
+          logo: buildImageUrls(user.company.logo, "company-avatars"),
           // site_url: `${APP_URL}/${user.company.publicName}`,
           widget_url: `${WIDGET_URL}/${user.company.publicName}`,
           widget_qr_code: buildFileUrl(user.company.widgetQrCode),
@@ -133,7 +133,7 @@ export class UserService {
       uuid: loc.location.id,
       id: loc.location.publicCode,
       name: loc.location.name,
-      avatar: buildFileUrl(loc.location.avatar),
+      avatar: buildImageUrls(loc.location.avatar, "location-avatars"),
       timezone: {
         timezone: loc.location.address?.timezone,
         timezone_offset: loc.location.address?.timezoneoffset,
@@ -183,7 +183,7 @@ export class UserService {
       first_name: user.firstName,
       last_name: user.lastName,
       full_name: getFullName(user.firstName, user.lastName),
-      avatar: buildFileUrl(user.avatar),
+      avatar: buildImageUrls(user.avatar, "user-avatars"),
       locations: locationArr.length ? locationArr : null,
       company: company,
       ...has,
@@ -312,7 +312,7 @@ export class UserService {
       id: user.id,
       email: user.email,
       phone: user.phone,
-      avatar: buildFileUrl(user.avatar),
+      avatar: buildImageUrls(user.avatar, "user-avatars"),
       first_name: user.firstName,
       last_name: user.lastName,
       role: user.role,
@@ -418,13 +418,11 @@ export class UserService {
       avatar || undefined,
     );
 
-    const key = `user-avatars/${upload}`;
-
     await this.prismaService.user.update({
       where: { id: userId },
-      data: { avatar: key },
+      data: { avatar: upload },
     });
-    return { success: true, avatar: buildFileUrl(key) };
+    return { success: true, avatar: buildImageUrls(upload, "user-avatars") };
   }
 
   /**

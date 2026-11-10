@@ -6,7 +6,7 @@ import { VerifyCodeDto } from "./dto/verify.dto";
 import { CustomerJwtPayload } from "./types/jwt.payload";
 import { CustomerTokenService } from "./token/token.service";
 import { JwtService } from "@nestjs/jwt";
-import { buildFileUrl } from "src/shared/utils/build-url";
+import { buildImageUrls } from "src/shared/utils/build-url";
 import { normalizePhone } from "src/shared/utils/phone";
 
 @Injectable()
@@ -140,7 +140,7 @@ export class CustomersAppService {
 
     const customer = {
       id: account.customer.id,
-      avatar: buildFileUrl(account.customer.avatar),
+      avatar: buildImageUrls(account.customer.avatar, "customer-avatars"),
       first_name: account.customer.firstName,
       last_name: account.customer.lastName,
       email: account.customer.email,

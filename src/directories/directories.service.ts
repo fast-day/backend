@@ -1,6 +1,6 @@
 import { HttpException, HttpStatus, Injectable } from "@nestjs/common";
 import { PrismaService } from "src/prisma/prisma.service";
-import { buildFileUrl } from "src/shared/utils/build-url";
+import { buildImageUrls } from "src/shared/utils/build-url";
 import { formatIntervalTime } from "src/shared/utils/format-time.util";
 import { getFullName } from "src/shared/utils/get-full-name.util";
 import { minutesToUtcDate } from "./utils/format-minutes.util";
@@ -38,7 +38,7 @@ export class DirectoriesService {
       first_name: emp.firstName,
       last_name: emp.lastName,
       full_name: getFullName(emp.firstName, emp.lastName),
-      avatar: buildFileUrl(emp.avatar),
+      avatar: buildImageUrls(emp.avatar, "user-avatars"),
       position: emp.position,
       role: emp.role,
     }));
@@ -101,7 +101,7 @@ export class DirectoriesService {
       first_name: emp.user.firstName,
       last_name: emp.user.lastName,
       full_name: getFullName(emp.user.firstName, emp.user.lastName),
-      avatar: buildFileUrl(emp.user.avatar),
+      avatar: buildImageUrls(emp.user.avatar, "user-avatars"),
       position: emp.user.position,
       role: emp.role,
       services: emp.user.services.map((service) => ({ id: service.serviceId })),
@@ -160,7 +160,7 @@ export class DirectoriesService {
         birthday: customer.customer.birthday,
         phone: customer.customer.phone,
         email: customer.customer.email,
-        avatar: buildFileUrl(customer.customer.avatar),
+        avatar: buildImageUrls(customer.customer.avatar, "customer-avatars"),
       },
       visit_total: customer.customer.bookings.map((book) => book.order).length,
       bookings_count: customer.customer._count.bookings,
@@ -187,7 +187,7 @@ export class DirectoriesService {
     return locations.map((loc) => ({
       id: loc.id,
       name: loc.name,
-      avatar: buildFileUrl(loc.avatar),
+      avatar: buildImageUrls(loc.avatar, "location-avatars"),
       active: loc.active,
       address: [
         loc.address?.country,
@@ -231,7 +231,7 @@ export class DirectoriesService {
     return locations.map((loc) => ({
       id: loc.id,
       name: loc.name,
-      avatar: buildFileUrl(loc.avatar),
+      avatar: buildImageUrls(loc.avatar, "location-avatars"),
       active: loc.active,
       address: [
         loc.address?.country,
@@ -265,7 +265,7 @@ export class DirectoriesService {
       id: service.id,
       name: service.name,
       mark: service.mark,
-      avatar: buildFileUrl(service.avatar),
+      avatar: buildImageUrls(service.avatar, "service-avatars"),
       public_name: service.publicName,
     }));
   }
@@ -307,7 +307,7 @@ export class DirectoriesService {
       id: service.service.id,
       name: service.service.name,
       mark: service.service.mark,
-      avatar: buildFileUrl(service.service.avatar),
+      avatar: buildImageUrls(service.service.avatar, "service-avatars"),
       public_name: service.service.publicName,
       duration: service.service.duration,
       category: service.service.category,
