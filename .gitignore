@@ -87,3 +87,5 @@ docker-compose.override.local.yml
 *.pem
 *.key
 *.secret
+
+PRIVATE.MD

@@ -46,4 +46,4 @@ COPY --from=build /app/assets/fonts ./assets/fonts
 USER node
 EXPOSE 8080
 
-CMD ["sh", "-c", "node_modules/.bin/prisma migrate deploy --schema=./db/schema.prisma && exec node dist/main.js"]
+CMD ["sh", "-c", "node_modules/.bin/prisma migrate deploy --schema=./db/schema.prisma && exec node dist/src/main.js"]
