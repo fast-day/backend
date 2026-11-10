@@ -26,7 +26,7 @@ import { EmployeeFirst } from "./types/employee.type";
 import { EmployeeBlockedDto } from "./dto/blocked.dto";
 import { SuccessResponse } from "./types/success.type";
 import { InviteAction, Prisma, UserStatus } from "@prisma/client";
-import { buildFileUrl } from "src/shared/utils/build-url";
+import { buildImageUrls } from "src/shared/utils/build-url";
 import { MailService } from "src/mail/mail.service";
 import { SettingsService } from "src/settings/settings.service";
 import { ChangePasswordDto } from "./dto/change-password.dto";
@@ -245,7 +245,7 @@ export class EmployeeService {
           full_name: getFullName(user.user.firstName, user.user.lastName),
           first_name: user.user.firstName,
           last_name: user.user.lastName,
-          avatar: buildFileUrl(user.user.avatar),
+          avatar: buildImageUrls(user.user.avatar, "user-avatars"),
           status: user.user.status,
           position: user.user.position,
           role: user.user.role,
@@ -336,7 +336,7 @@ export class EmployeeService {
         ),
         first_name: userLocation.user.firstName,
         last_name: userLocation.user.lastName,
-        avatar: buildFileUrl(userLocation.user.avatar),
+        avatar: buildImageUrls(userLocation.user.avatar, "user-avatars"),
         status: userLocation.user.status,
         position: userLocation.user.position,
         role: userLocation.role,
@@ -498,7 +498,7 @@ export class EmployeeService {
         first_name: newUser.user.firstName,
         last_name: newUser.user.lastName,
         full_name: getFullName(newUser.user.firstName, newUser.user.lastName),
-        avatar: buildFileUrl(newUser.user.avatar),
+        avatar: buildImageUrls(newUser.user.avatar, "user-avatars"),
         status: newUser.user.status,
         position: newUser.user.position,
         role: newUser.user.role,
@@ -507,12 +507,12 @@ export class EmployeeService {
       services: newUser.user.services.map((s) => ({
         id: s.service.id,
         name: s.service.name,
-        avatar: buildFileUrl(s.service.avatar),
+        avatar: buildImageUrls(s.service.avatar, "service-avatars"),
       })),
       locations: newUser.user.locations.map((l) => ({
         id: l.location.id,
         name: l.location.name,
-        avatar: buildFileUrl(l.location.avatar),
+        avatar: buildImageUrls(l.location.avatar, "location-avatars"),
       })),
     };
   }
@@ -700,7 +700,7 @@ export class EmployeeService {
       ),
       first_name: userLocation.user.firstName,
       last_name: userLocation.user.lastName,
-      avatar: buildFileUrl(userLocation.user.avatar),
+      avatar: buildImageUrls(userLocation.user.avatar, "user-avatars"),
       status: userLocation.user.status,
       position: userLocation.user.position,
       role: userLocation.role,
@@ -797,7 +797,7 @@ export class EmployeeService {
         first_name: employee.user.firstName,
         last_name: employee.user.lastName,
         full_name: getFullName(employee.user.firstName, employee.user.lastName),
-        avatar: buildFileUrl(employee.user.avatar),
+        avatar: buildImageUrls(employee.user.avatar, "user-avatars"),
         status: employee.user.status,
         position: employee.user.position,
         role: employee.user.role,
@@ -805,7 +805,7 @@ export class EmployeeService {
       },
       services: employee.user.services.map((s) => ({
         id: s.service.id,
-        avatar: buildFileUrl(s.service.avatar),
+        avatar: buildImageUrls(s.service.avatar, "service-avatars"),
         name: s.service.name,
       })),
       // locations: employee.user.locations.map((l) => ({

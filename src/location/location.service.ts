@@ -14,7 +14,7 @@ import { ILocationUser } from "./types/location-user.type";
 import { BufferedFile } from "src/minio/file.model";
 import { MinioService } from "src/minio/minio.service";
 import { LocationActivateDto } from "./dto/location-activate.dto";
-import { buildFileUrl } from "src/shared/utils/build-url";
+import { buildImageUrls } from "src/shared/utils/build-url";
 import { GetLocationsDto } from "./dto/get-locations.dto";
 import {
   buildPaginatedResponse,
@@ -80,7 +80,7 @@ export class LocationService {
       return {
         id: location.id,
         name: location.name,
-        avatar: buildFileUrl(location.avatar),
+        avatar: buildImageUrls(location.avatar, "location-avatars"),
         description: location.description,
         phone: location.phone,
         is_active: location.active,
@@ -155,7 +155,7 @@ export class LocationService {
 
     return {
       ...location,
-      avatar: buildFileUrl(location.avatar),
+      avatar: buildImageUrls(location.avatar, "location-avatars"),
       address,
     };
   }
@@ -262,7 +262,7 @@ export class LocationService {
     return {
       id: newLocation.id,
       name: newLocation.name,
-      avatar: buildFileUrl(newLocation.avatar),
+      avatar: buildImageUrls(newLocation.avatar, "location-avatars"),
       description: newLocation.description,
       phone: newLocation.phone,
       timezone: `${newLocation.address?.timezone} (${newLocation.address?.timezoneoffset})`,
@@ -272,7 +272,7 @@ export class LocationService {
       users: newLocation.users.map((u) => ({
         id: u.user.id,
         name: u.user.firstName,
-        avatar: buildFileUrl(u.user.avatar),
+        avatar: buildImageUrls(u.user.avatar, "user-avatars"),
       })),
       category: newLocation.category,
       comfort: newLocation.comfort,
@@ -299,7 +299,7 @@ export class LocationService {
       },
       services: newLocation.services.map((service) => ({
         id: service.service.id,
-        avatar: buildFileUrl(service.service.avatar),
+        avatar: buildImageUrls(service.service.avatar, "service-avatars"),
         name: service.service.name,
         mark: service.service.mark,
       })),
@@ -408,7 +408,7 @@ export class LocationService {
     return {
       id: location.id,
       name: location.name,
-      avatar: buildFileUrl(location.avatar),
+      avatar: buildImageUrls(location.avatar, "location-avatars"),
       description: location.description,
       phone: location.phone,
       timezone: `${location.address?.timezone} (${location.address?.timezoneoffset})`,
@@ -418,7 +418,7 @@ export class LocationService {
       users: location.users.map((u) => ({
         id: u.user.id,
         name: u.user.firstName,
-        avatar: buildFileUrl(u.user.avatar),
+        avatar: buildImageUrls(u.user.avatar, "user-avatars"),
       })),
       category: location.category,
       comfort: location.comfort,
@@ -447,7 +447,7 @@ export class LocationService {
         id: service.service.id,
         name: service.service.name,
         mark: service.service.mark,
-        avatar: buildFileUrl(service.service.avatar),
+        avatar: buildImageUrls(service.service.avatar, "service-avatars"),
       })),
     };
   }
@@ -550,7 +550,7 @@ export class LocationService {
     const data = locations.map((location) => ({
       id: location.id,
       name: location.name,
-      avatar: buildFileUrl(location.avatar),
+      avatar: buildImageUrls(location.avatar, "location-avatars"),
       description: location.description,
       phone: location.phone,
       is_active: location.active,
@@ -622,7 +622,7 @@ export class LocationService {
         email: user.user.email,
         name: `${user.user.firstName} ${user.user.lastName}`,
         phone: user.user.phone,
-        avatar: buildFileUrl(user.user.avatar),
+        avatar: buildImageUrls(user.user.avatar, "user-avatars"),
         status: user.user.status,
         position: user.user.position,
       },
@@ -680,7 +680,7 @@ export class LocationService {
         phone: user.user.phone,
         status: user.user.status,
         position: user.user.position,
-        avatar: buildFileUrl(user.user.avatar),
+        avatar: buildImageUrls(user.user.avatar, "user-avatars"),
       },
     };
 
@@ -695,12 +695,13 @@ export class LocationService {
       avatar || undefined,
     );
 
-    const key = `location-avatars/${upload}`;
-
     await this.prismaService.location.update({
       where: { id: locationId },
-      data: { avatar: key },
+      data: { avatar: upload },
     });
-    return { success: true, avatar: buildFileUrl(key) };
+    return {
+      success: true,
+      avatar: buildImageUrls(upload, "location-avatars"),
+    };
   }
 }

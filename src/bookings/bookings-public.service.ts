@@ -1,7 +1,7 @@
 import { HttpException, HttpStatus, Injectable } from "@nestjs/common";
 import { PrismaService } from "src/prisma/prisma.service";
 import { GetPublicBookingDto } from "./dto/public/employee-query.dto";
-import { buildFileUrl } from "src/shared/utils/build-url";
+import { buildImageUrls } from "src/shared/utils/build-url";
 import { getFullName } from "src/shared/utils/get-full-name.util";
 import { DEFAULT_TIMEZONE } from "src/shared/constant/timezone.constant";
 import { WidgetBookingCreateDto } from "./dto/public/booking-create.dto";
@@ -54,7 +54,7 @@ export class BookingsPublicService {
 
     return {
       id: company.id,
-      logo: buildFileUrl(company.logo),
+      logo: buildImageUrls(company.logo, "company-avatars"),
       name: company.name,
       public_name: company.publicName,
       currency: company.currency,
@@ -124,7 +124,7 @@ export class BookingsPublicService {
         full_name: getFullName(employee.user.firstName, employee.user.lastName),
         phone: employee.user.phone,
         position: employee.user.position,
-        avatar: buildFileUrl(employee.user.avatar),
+        avatar: buildImageUrls(employee.user.avatar, "user-avatars"),
       },
     };
   }
@@ -232,7 +232,7 @@ export class BookingsPublicService {
       mark: service.mark,
       duration: service.duration,
       category: service.category,
-      avatar: buildFileUrl(service.avatar),
+      avatar: buildImageUrls(service.avatar, "service-avatars"),
       price: {
         price: service.price?.price,
         const_price: service.price?.costPrice,
@@ -298,7 +298,7 @@ export class BookingsPublicService {
       mark: service.mark,
       duration: service.duration,
       category: service.category,
-      avatar: buildFileUrl(service.avatar),
+      avatar: buildImageUrls(service.avatar, "service-avatars"),
       price: {
         price: service.price?.price,
         const_price: service.price?.costPrice,
@@ -624,7 +624,7 @@ export class BookingsPublicService {
       location: {
         id: booking.location.id,
         name: booking.location.name,
-        avatar: buildFileUrl(booking.location.avatar),
+        avatar: buildImageUrls(booking.location.avatar, "location-avatars"),
       },
       customer: {
         id: booking.customer.id,
@@ -639,7 +639,7 @@ export class BookingsPublicService {
           birthday: booking.customer.birthday,
           phone: booking.customer.phone,
           email: booking.customer.email,
-          avatar: buildFileUrl(booking.customer.avatar),
+          avatar: buildImageUrls(booking.customer.avatar, "customer-avatars"),
         },
         visit_total: customerCompany?.customer.bookings.filter((b) => b.order)
           .length,
@@ -664,7 +664,7 @@ export class BookingsPublicService {
           name: service.service.name,
           mark: service.service.mark,
           duration: service.service.duration,
-          avatar: buildFileUrl(service.service.avatar),
+          avatar: buildImageUrls(service.service.avatar, "service-avatars"),
           category: service.service.category,
           prices: {
             price: service.service.price?.price,
@@ -680,7 +680,7 @@ export class BookingsPublicService {
             service.employee.lastName,
           ),
           phone: service.employee.phone,
-          avatar: buildFileUrl(service.employee.avatar),
+          avatar: buildImageUrls(service.employee.avatar, "user-avatars"),
         },
       })),
     };

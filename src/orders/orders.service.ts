@@ -8,7 +8,7 @@ import {
 } from "src/shared/common/pagination/pagination";
 import { GetOrdersDto, OrderSortOrder } from "./dto/get-orders.dto";
 import { getFullName } from "src/shared/utils/get-full-name.util";
-import { buildFileUrl } from "src/shared/utils/build-url";
+import { buildImageUrls } from "src/shared/utils/build-url";
 import {
   formatBookingTime,
   formatDateInTimezone,
@@ -281,7 +281,7 @@ export class OrdersService {
             phone: booking.customer.phone,
             email: booking.customer.email,
             birthday: booking.customer.birthday,
-            avatar: buildFileUrl(booking.customer.avatar),
+            avatar: buildImageUrls(booking.customer.avatar, "customer-avatars"),
           },
           booking_services: booking.services.map((service) => ({
             booking_service_id: service.id,
@@ -301,7 +301,7 @@ export class OrdersService {
               name: service.service.name,
               mark: service.service.mark,
               duration: service.service.duration,
-              avatar: buildFileUrl(service.service.avatar),
+              avatar: buildImageUrls(service.service.avatar, "service-avatars"),
               category: service.service.category,
               prices: {
                 price: service.service.price?.price,
@@ -317,7 +317,7 @@ export class OrdersService {
                 service.employee.lastName,
               ),
               phone: service.employee.phone,
-              avatar: buildFileUrl(service.employee.avatar),
+              avatar: buildImageUrls(service.employee.avatar, "user-avatars"),
             },
           })),
         };
@@ -881,7 +881,10 @@ export class OrdersService {
                 booking.customer.lastName,
               ),
               phone: booking.customer.phone,
-              avatar: buildFileUrl(booking.customer.avatar),
+              avatar: buildImageUrls(
+                booking.customer.avatar,
+                "customer-avatars",
+              ),
             }
           : null,
       };
@@ -1002,7 +1005,10 @@ export class OrdersService {
                 booking.customer.lastName,
               ),
               phone: booking.customer.phone,
-              avatar: buildFileUrl(booking.customer.avatar),
+              avatar: buildImageUrls(
+                booking.customer.avatar,
+                "customer-avatars",
+              ),
             }
           : null,
       };
@@ -1112,7 +1118,10 @@ export class OrdersService {
               phone: booking.customer.phone,
               email: booking.customer.email,
               birthday: booking.customer.birthday,
-              avatar: buildFileUrl(booking.customer.avatar),
+              avatar: buildImageUrls(
+                booking.customer.avatar,
+                "customer-avatars",
+              ),
             },
             booking_services: booking.services.map((service) => ({
               booking_service_id: service.id,
@@ -1132,7 +1141,10 @@ export class OrdersService {
                 name: service.service.name,
                 mark: service.service.mark,
                 duration: service.service.duration,
-                avatar: buildFileUrl(service.service.avatar),
+                avatar: buildImageUrls(
+                  service.service.avatar,
+                  "service-avatars",
+                ),
                 category: service.service.category,
                 prices: {
                   price: service.service.price?.price,
@@ -1148,7 +1160,7 @@ export class OrdersService {
                   service.employee.lastName,
                 ),
                 phone: service.employee.phone,
-                avatar: buildFileUrl(service.employee.avatar),
+                avatar: buildImageUrls(service.employee.avatar, "user-avatars"),
               },
             })),
           };

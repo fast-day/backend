@@ -11,7 +11,7 @@ import { LocationService } from "src/location/location.service";
 import { slugify } from "transliteration";
 import { BufferedFile } from "src/minio/file.model";
 import { MinioService } from "src/minio/minio.service";
-import { buildFileUrl } from "src/shared/utils/build-url";
+import { buildImageUrls } from "src/shared/utils/build-url";
 import { UpdateCompanyDto } from "./dto/update.dto";
 import { Prisma } from "@prisma/client";
 import { customAlphabet } from "nanoid";
@@ -157,13 +157,16 @@ export class CompanyService {
         company.users[0].firstName,
         company.users[0].lastName,
       ),
-      avatar: buildFileUrl(company.users[0].avatar),
+      avatar: buildImageUrls(company.users[0].avatar, "user-avatars"),
       locations: [
         {
           uuid: company.location.id,
           id: company.location.publicCode,
           name: company.location.name,
-          avatar: buildFileUrl(company.location.avatar),
+          avatar: buildImageUrls(
+            company.location[0].avatar,
+            "location-avatars",
+          ),
           timezone: {
             timezone: company.location.address?.timezone,
           },
@@ -210,13 +213,11 @@ export class CompanyService {
       logo || undefined,
     );
 
-    const key = `company-avatars/${upload}`;
-
     await this.prismaService.company.update({
       where: { id: companyId },
-      data: { logo: key },
+      data: { logo: upload },
     });
-    return { success: true, avatar: buildFileUrl(key) };
+    return { success: true, avatar: buildImageUrls(upload, "company-avatars") };
   }
 
   async update(companyId: string, dto: UpdateCompanyDto) {
@@ -246,7 +247,7 @@ export class CompanyService {
     return {
       id: company.id,
       name: company.name,
-      logo: buildFileUrl(company.logo),
+      logo: buildImageUrls(company.logo, "company-avatars"),
       site_url: `http://app.fast-day.ru/${company.publicName}`,
       currency: company.currency,
     };

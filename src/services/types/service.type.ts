@@ -1,4 +1,5 @@
 import { MarkEnum, ServiceType } from "@prisma/client";
+import { ImageUrls } from "src/shared/utils/build-url";
 
 export type ServiceDate = {
   days: string[];
@@ -50,7 +51,7 @@ export interface IServices {
   duration: number;
   category: string | null;
   public_name: string | null;
-  avatar: string | null;
+  avatar: ImageUrls | null;
   price: number | null;
   mark: MarkEnum;
   type: ServiceType;

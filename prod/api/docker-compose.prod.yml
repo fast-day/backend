@@ -1,0 +1,126 @@
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+services:
+  backend:
+    image: xaletch/fastday-backend:latest
+    restart: unless-stopped
+    env_file:
+      - .env
+    ports:
+      - "127.0.0.1:8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+      minio-init:
+        condition: service_completed_successfully
+    networks:
+      - backend
+      - shared
+    logging: *logging
+
+  postgres:
+    container_name: postgres-prod-container
+    image: postgres:17
+    restart: unless-stopped
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_PORT=${POSTGRES_PORT}
+      - POSTGRES_DB=${POSTGRES_DB}
+    ports:
+      - "127.0.0.1:5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    networks:
+      - backend
+    logging: *logging
+
+  redis:
+    container_name: redis-prod-container
+    image: redis:8.2.2
+    restart: unless-stopped
+    command: ["redis-server", "--requirepass", "${REDIS_PASSWORD}", "--appendonly", "yes"]
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -a \"$$REDIS_PASSWORD\" ping | grep PONG"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+    networks:
+      - backend
+    logging: *logging
+
+  minio:
+    image: minio/minio:RELEASE.2025-09-07T16-13-09Z
+    container_name: minio-prod
+    restart: unless-stopped
+    command: server --console-address ":9001" /data/
+    ports:
+      - "127.0.0.1:9000:9000"
+      - "127.0.0.1:9001:9001"
+    environment:
+      - MINIO_ROOT_USER=${MINIO_USER}
+      - MINIO_ROOT_PASSWORD=${MINIO_PASSWORD}
+      - MINIO_BROWSER_REDIRECT_URL=${MINIO_BROWSER_REDIRECT_URL}
+    volumes:
+      - minio-storage:/data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 15s
+    networks:
+      - backend
+      - shared
+    logging: *logging
+  
+  minio-init:
+    image: minio/mc:latest
+    restart: "no"
+    depends_on:
+      minio:
+        condition: service_healthy
+    environment:
+      - MINIO_USER=${MINIO_USER}
+      - MINIO_PASSWORD=${MINIO_PASSWORD}
+    entrypoint: ["/bin/sh", "-c"]
+    command: >
+      mc alias set minio http://minio:9000 $$MINIO_USER $$MINIO_PASSWORD &&
+      mc mb --ignore-existing minio/location-avatars &&
+      mc mb --ignore-existing minio/user-avatars &&
+      mc mb --ignore-existing minio/company-avatars &&
+      mc anonymous set download minio/location-avatars &&
+      mc anonymous set download minio/user-avatars &&
+      mc anonymous set download minio/company-avatars
+    networks:
+      - backend
+    logging: *logging
+
+networks:
+  backend:
+    driver: bridge
+  shared:
+    external: true
+
+volumes:
+  postgres_data:
+  redis_data:
+  minio-storage:

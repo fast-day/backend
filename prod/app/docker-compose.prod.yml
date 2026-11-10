@@ -1,15 +1,11 @@
 services:
   crm:
     container_name: crm
-    image: xaletch/diplome-app-crm:latest
-    platform: linux/amd64
-    restart: always
-    environment:
-      - VITE_API_URL=${VITE_API_URL}
+    image: xaletch/fastday-crm:latest
+    restart: unless-stopped
     networks:
       - shared
 
 networks:
   shared:
     external: true
-

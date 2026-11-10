@@ -3,6 +3,7 @@ import { ConfigService } from "@nestjs/config";
 import { BookingStatus } from "@prisma/client";
 import { SESv2Client, SendEmailCommand } from "@aws-sdk/client-sesv2";
 import { getFullName } from "src/shared/utils/get-full-name.util";
+import { ImageUrls } from "src/shared/utils/build-url";
 
 interface IBookingWithRelationService {
   booking_service_id: string;
@@ -15,7 +16,7 @@ interface IBookingWithRelationService {
     service_id: string;
     name: string;
     duration: number;
-    avatar: string | null;
+    avatar: ImageUrls | null;
     prices: {
       price?: number | null;
       cost_price?: number | null;
@@ -42,7 +43,7 @@ interface BookingWithRelations {
     full_name: string;
     first_name: string | null;
     last_name: string | null;
-    avatar: string | null;
+    avatar: ImageUrls | null;
   };
   services: IBookingWithRelationService[];
 }

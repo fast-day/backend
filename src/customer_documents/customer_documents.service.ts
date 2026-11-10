@@ -5,7 +5,7 @@ import {
   buildPaginatedResponse,
   getPaginationParams,
 } from "src/shared/common/pagination/pagination";
-import { buildFileUrl } from "src/shared/utils/build-url";
+import { buildImageUrls } from "src/shared/utils/build-url";
 import { getFullName } from "src/shared/utils/get-full-name.util";
 import { CustomerUpdateDocumentDto } from "./dto/customer-update-document.dto";
 import { Prisma } from "@prisma/client";
@@ -209,7 +209,10 @@ export class CustomerDocumentsService {
           email: docs.customerCompany.customer.email,
           phone: docs.customerCompany.customer.phone,
           birthday: docs.customerCompany.customer.birthday,
-          avatar: buildFileUrl(docs.customerCompany.customer.avatar),
+          avatar: buildImageUrls(
+            docs.customerCompany.customer.avatar,
+            "customer-avatars",
+          ),
         },
       },
     };
