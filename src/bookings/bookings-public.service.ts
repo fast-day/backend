@@ -485,6 +485,7 @@ export class BookingsPublicService {
 
     const createDto: BookingCreateDto = {
       services: dto.services,
+      mark: "primary",
       customers: [{ id: customerId }],
       location_id: dto.location_id,
       comment: dto.comment,

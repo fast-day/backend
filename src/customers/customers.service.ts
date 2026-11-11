@@ -113,37 +113,32 @@ export class CustomersService {
     const { search, sort, ...pagination } = query;
     const { page, limit, skip } = getPaginationParams(pagination);
 
+    const term = search?.trim();
+    const phone = term ? normalizePhone(term) : "";
+    const mode = Prisma.QueryMode.insensitive;
+
     const orderBy: Prisma.CustomerCompanyOrderByWithRelationInput =
       sort === CustomerSortOrder.OLDEST
         ? { createdAt: "asc" }
         : { createdAt: "desc" };
 
-    const where = {
+    const where: Prisma.CustomerCompanyWhereInput = {
       companyId,
-      ...(search && {
-        customer: {
-          OR: [
-            {
-              firstName: {
-                contains: search,
-                mode: Prisma.QueryMode.insensitive,
-              },
+      ...(term && {
+        OR: [
+          { firstName: { contains: term, mode } },
+          { lastName: { contains: term, mode } },
+          {
+            customer: {
+              OR: [
+                { firstName: { contains: term, mode } },
+                { lastName: { contains: term, mode } },
+                { email: { contains: term, mode } },
+                ...(phone ? [{ phoneNormalized: { contains: phone } }] : []),
+              ],
             },
-            {
-              lastName: {
-                contains: search,
-                mode: Prisma.QueryMode.insensitive,
-              },
-            },
-            {
-              phoneNormalized: {
-                contains: normalizePhone(search),
-                mode: Prisma.QueryMode.insensitive,
-              },
-            },
-            { email: { contains: search, mode: Prisma.QueryMode.insensitive } },
-          ],
-        },
+          },
+        ],
       }),
     };
 

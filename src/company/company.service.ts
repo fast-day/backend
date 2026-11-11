@@ -134,7 +134,7 @@ export class CompanyService {
       );
 
       const widgetQrCode = await this.qr.generate(
-        `${WIDGET_URL}/${company.publicName}`,
+        `${WIDGET_URL}/${company.publicName}/${location.publicCode}/${user.id}`,
       );
 
       await t.company.update({
@@ -163,10 +163,6 @@ export class CompanyService {
           uuid: company.location.id,
           id: company.location.publicCode,
           name: company.location.name,
-          avatar: buildImageUrls(
-            company.location[0].avatar,
-            "location-avatars",
-          ),
           timezone: {
             timezone: company.location.address?.timezone,
           },
